@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>모던 한방 브랜드 — 손익 시뮬레이터</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+  :root {
+    --bg: #F7F5F0;
+    --surface: #FFFFFF;
+    --surface2: #F2EFE9;
+    --border: #E0DAD0;
+    --text: #1A1814;
+    --text2: #6B6560;
+    --text3: #9E9890;
+    --accent: #2A5C45;
+    --accent-light: #E8F2EE;
+    --accent2: #8B4513;
+    --amber: #C47D1A;
+    --amber-light: #FDF4E3;
+    --red: #C0392B;
+    --red-light: #FDECEA;
+    --gold: #B8963E;
+    --serif: 'Noto Serif KR', serif;
+    --sans: 'Noto Sans KR', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* Header */
+  .header {
+    background: var(--text);
+    color: white;
+    padding: 28px 40px 24px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    border-bottom: 3px solid var(--gold);
+  }
+  .header-left h1 {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    line-height: 1.3;
+    margin-bottom: 4px;
+  }
+  .header-left p { font-size: 12px; color: rgba(255,255,255,.5); letter-spacing: .5px; }
+  .header-badge {
+    font-size: 11px;
+    background: var(--gold);
+    color: var(--text);
+    padding: 4px 12px;
+    border-radius: 2px;
+    font-weight: 700;
+    letter-spacing: .5px;
+  }
+
+  /* Layout */
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+  .layout { display: grid; grid-template-columns: 380px 1fr; gap: 24px; align-items: start; }
+
+  /* Panels */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .panel-head {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-head-num {
+    width: 22px; height: 22px;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .panel-head h2 { font-size: 13px; font-weight: 700; letter-spacing: .3px; }
+  .panel-body { padding: 20px; }
+
+  /* Input groups */
+  .input-group { margin-bottom: 18px; }
+  .input-group:last-child { margin-bottom: 0; }
+  .input-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text2);
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .input-hint { font-size: 10px; color: var(--text3); font-weight: 400; letter-spacing: 0; text-transform: none; }
+
+  .input-row { display: flex; align-items: center; gap: 8px; }
+  .input-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: var(--surface2);
+    overflow: hidden;
+    transition: border-color .15s;
+  }
+  .input-wrap:focus-within { border-color: var(--accent); background: white; }
+  .input-unit {
+    padding: 0 10px;
+    font-size: 12px;
+    color: var(--text3);
+    background: var(--surface2);
+    border-right: 1px solid var(--border);
+    height: 36px;
+    display: flex; align-items: center;
+    white-space: nowrap;
+  }
+  .input-unit.right { border-right: none; border-left: 1px solid var(--border); }
+  input[type="number"] {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 0 10px;
+    height: 36px;
+    font-size: 14px;
+    font-family: var(--sans);
+    font-weight: 500;
+    color: var(--text);
+    outline: none;
+    width: 100%;
+    -moz-appearance: textfield;
+  }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  .slider-wrap { margin-top: 6px; }
+  input[type="range"] {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    background: linear-gradient(to right, var(--accent) 0%, var(--accent) 18%, var(--border) 18%, var(--border) 100%);
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid white;
+    box-shadow: 0 1px 4px rgba(0,0,0,.2);
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 18px 0; }
+
+  /* Scenario tabs */
+  .scenario-tabs { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 20px; }
+  .stab {
+    flex: 1;
+    padding: 9px 6px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--surface2);
+    color: var(--text2);
+    border-right: 1px solid var(--border);
+    transition: all .15s;
+    letter-spacing: .2px;
+  }
+  .stab:last-child { border-right: none; }
+  .stab.active { background: var(--accent); color: white; }
+  .stab:hover:not(.active) { background: var(--accent-light); color: var(--accent); }
+
+  /* KPI cards */
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .kpi {
+    border-radius: 3px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+  }
+  .kpi-label { font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: .5px; text-transform: uppercase; margin-bottom: 6px; }
+  .kpi-val { font-size: 22px; font-weight: 700; line-height: 1; margin-bottom: 3px; }
+  .kpi-sub { font-size: 11px; color: var(--text2); }
+  .kpi.green { background: var(--accent-light); border-color: #B5D9C8; }
+  .kpi.green .kpi-val { color: var(--accent); }
+  .kpi.amber { background: var(--amber-light); border-color: #F0D090; }
+  .kpi.amber .kpi-val { color: var(--amber); }
+  .kpi.red { background: var(--red-light); border-color: #F5B5B0; }
+  .kpi.red .kpi-val { color: var(--red); }
+  .kpi.neutral { background: var(--surface2); }
+  .kpi.neutral .kpi-val { color: var(--text); }
+
+  /* P&L table */
+  .pnl { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px; }
+  .pnl thead th {
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text3);
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    padding: 0 0 8px;
+    border-bottom: 2px solid var(--text);
+  }
+  .pnl thead th:last-child { text-align: right; }
+  .pnl tbody td { padding: 8px 0; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .pnl tbody tr:last-child td { border-bottom: none; }
+  .pnl .td-right { text-align: right; font-weight: 500; }
+  .pnl .td-label { color: var(--text); }
+  .pnl .td-sub { color: var(--text2); font-size: 12px; padding-left: 12px; }
+  .pnl .td-pct {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 2px;
+    font-weight: 700;
+    margin-left: 6px;
+    display: inline-block;
+  }
+  .pnl .pct-g { background: var(--accent-light); color: var(--accent); }
+  .pnl .pct-a { background: var(--amber-light); color: var(--amber); }
+  .pnl .pct-r { background: var(--red-light); color: var(--red); }
+  .pnl .row-subtotal td { background: var(--surface2); font-weight: 700; border-bottom: 2px solid var(--border); }
+  .pnl .row-subtotal td:first-child { padding-left: 8px; }
+  .pnl .row-total { border-top: 2px solid var(--text); }
+  .pnl .row-total td { padding-top: 10px; font-weight: 700; font-size: 14px; border-bottom: none; }
+  .td-neg { color: var(--red); }
+  .td-pos { color: var(--accent); }
+
+  /* Waterfall bar */
+  .waterfall { margin-bottom: 20px; }
+  .wf-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .wf-label { font-size: 12px; color: var(--text2); width: 130px; flex-shrink: 0; text-align: right; }
+  .wf-bar-bg { flex: 1; background: var(--surface2); border-radius: 2px; height: 24px; overflow: hidden; border: 1px solid var(--border); display: flex; }
+  .wf-fill { height: 100%; display: flex; align-items: center; padding: 0 8px; transition: width .4s cubic-bezier(.4,0,.2,1); }
+  .wf-fill-text { font-size: 10px; font-weight: 700; white-space: nowrap; }
+  .wf-val { font-size: 12px; font-weight: 700; width: 90px; text-align: right; flex-shrink: 0; }
+
+  /* Gate indicators */
+  .gate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .gate-card {
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 12px 14px;
+  }
+  .gate-label { font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: .4px; text-transform: uppercase; margin-bottom: 4px; }
+  .gate-val { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .gate-status { font-size: 10px; font-weight: 700; letter-spacing: .3px; display: flex; align-items: center; gap: 4px; }
+  .gate-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .g-pass { color: var(--accent); }
+  .g-pass .gate-dot { background: var(--accent); }
+  .g-warn { color: var(--amber); }
+  .g-warn .gate-dot { background: var(--amber); }
+  .g-fail { color: var(--red); }
+  .g-fail .gate-dot { background: var(--red); }
+
+  /* Section divider */
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* Notice */
+  .notice {
+    font-size: 11px;
+    color: var(--text2);
+    background: var(--surface2);
+    border-left: 3px solid var(--border);
+    padding: 10px 14px;
+    line-height: 1.7;
+    border-radius: 0 3px 3px 0;
+    margin-top: 16px;
+  }
+  .notice.ok { border-left-color: var(--accent); background: var(--accent-light); color: #1E4A35; }
+  .notice.warn { border-left-color: var(--amber); background: var(--amber-light); color: #6B4210; }
+  .notice.bad { border-left-color: var(--red); background: var(--red-light); color: #8B1C15; }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 11px;
+    color: var(--text3);
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+
+  @media (max-width: 800px) {
+    .layout { grid-template-columns: 1fr; }
+    .header { padding: 20px; flex-direction: column; align-items: flex-start; gap: 10px; }
+    .container { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>모던 한방 안티에이징 선물 브랜드<br>손익 시뮬레이터</h1>
+    <p>INTERNAL USE ONLY · GATE 2 REVIEW · v1.0</p>
+  </div>
+  <div class="header-badge">CONFIDENTIAL</div>
+</div>
+
+<div class="container">
+  <div class="layout">
+
+    <!-- LEFT: 입력 패널 -->
+    <div>
+      <!-- 판매 구조 -->
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-head">
+          <div class="panel-head-num">1</div>
+          <h2>판매 구조 설정</h2>
+        </div>
+        <div class="panel-body">
+          <div class="input-group">
+            <div class="input-label">세트 정상가
+              <span class="input-hint">원</span>
+            </div>
+            <div class="input-wrap">
+              <input type="number" id="priceSet" value="190000" step="1000" oninput="calc()">
+              <span class="input-unit right">원</span>
+            </div>
+          </div>
+          <div class="input-group">
+            <div class="input-label">시즌 할인가
+              <span class="input-hint">추석 한정</span>
+            </div>
+            <div class="input-wrap">
+              <input type="number" id="priceSeason" value="168000" step="1000" oninput="calc()">
+              <span class="input-unit right">원</span>
+            </div>
+          </div>
+          <div class="input-group">
+            <div class="input-label">연간 판매 수량 (세트)
+              <span class="input-hint">Base 시나리오</span>
+            </div>
+            <div class="input-wrap">
+              <input type="number" id="qty" value="12500" step="100" oninput="calc()">
+              <span class="input-unit right">세트</span>
+            </div>
+          </div>
+          <div class="input-group">
+            <div class="input-label">정상가 판매 비중
+              <span class="input-hint" id="seasonRatioLabel">시즌가 30%</span>
+            </div>
+            <div class="input-row">
+              <div class="input-wrap">
+                <input type="number" id="normalRatio" value="70" min="0" max="100" step="5" oninput="updateSlider();calc()">
+                <span class="input-unit right">%</span>
+              </div>
+            </div>
+            <div class="slider-wrap">
+              <input type="range" id="normalSlider" min="0" max="100" step="5" value="70" oninput="document.getElementById('normalRatio').value=this.value;updateSliderBg(this);calc()">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 원가 구조 -->
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-head">
+          <div class="panel-head-num">2</div>
+          <h2>원가 구조 설정</h2>
+        </div>
+        <div class="panel-body">
+          <div class="input-group">
+            <div class="input-label">목표 원가율 (통합)
+              <span class="input-hint" id="costAmtLabel">—</span>
+            </div>
+            <div class="input-row">
+              <div class="input-wrap">
+                <input type="number" id="costRate" value="18" min="5" max="50" step="0.5" oninput="updateCostSlider();calc()">
+                <span class="input-unit right">%</span>
+              </div>
+            </div>
+            <div class="slider-wrap">
+              <input type="range" id="costSlider" min="5" max="50" step="0.5" value="18" oninput="document.getElementById('costRate').value=this.value;updateCostSliderBg(this);calc()">
+            </div>
+          </div>
+          <div class="divider"></div>
+          <p class="section-label">세트 원가 직접 입력 (선택)</p>
+          <div class="input-group">
+            <div class="input-label">화장품 원료+용기+충진
+              <span class="input-hint">크림+앰플 합계</span>
+            </div>
+            <div class="input-wrap">
+              <input type="number" id="costProduct" value="" placeholder="자동계산" step="100" oninput="calc()">
+              <span class="input-unit right">원</span>
+            </div>
+          </div>
+          <div class="input-group">
+            <div class="input-label">패키지 원가
+              <span class="input-hint">세트박스+부자재</span>
+            </div>
+            <div class="input-wrap">
+              <input type="number" id="costPackage" value="" placeholder="자동계산" step="100" oninput="calc()">
+              <span class="input-unit right">원</span>
+            </div>
+          </div>
+          <div class="input-group">
+            <div class="input-label">마스크팩 5매 원가</div>
+            <div class="input-wrap">
+              <input type="number" id="costMask" value="4000" step="100" oninput="calc()">
+              <span class="input-unit right">원</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 채널·고정비 -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-head-num">3</div>
+          <h2>채널비 · 고정비</h2>
+        </div>
+        <div class="panel-body">
+          <div class="input-group">
+            <div class="input-label">채널·마케팅비율
+              <span class="input-hint" id="chAmtLabel">—</span>
+            </div>
+            <div class="input-row">
+              <div class="input-wrap">
+                <input type="number" id="channelRate" value="37" min="0" max="70" step="1" oninput="updateChSlider();calc()">
+                <span class="input-unit right">%</span>
+              </div>
+            </div>
+            <div class="slider-wrap">
+              <input type="range" id="chSlider" min="0" max="70" step="1" value="37" oninput="document.getElementById('channelRate').value=this.value;updateChSliderBg(this);calc()">
+            </div>
+          </div>
+          <div class="input-group">
+            <div class="input-label">연간 고정비 총액
+              <span class="input-hint">인건비·물류·CS</span>
+            </div>
+            <div class="input-wrap">
+              <input type="number" id="fixedCost" value="350000000" step="10000000" oninput="calc()">
+              <span class="input-unit right">원</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: 결과 패널 -->
+    <div>
+      <!-- 시나리오 탭 -->
+      <div class="scenario-tabs">
+        <div class="stab active" id="tab-set" onclick="setTab('set')">세트 기준</div>
+        <div class="stab" id="tab-year" onclick="setTab('year')">연간 P&amp;L</div>
+        <div class="stab" id="tab-gate" onclick="setTab('gate')">Gate 3 지표</div>
+      </div>
+
+      <!-- 탭: 세트 기준 -->
+      <div id="view-set">
+        <div class="kpi-grid">
+          <div class="kpi neutral">
+            <div class="kpi-label">가중 평균 판매가</div>
+            <div class="kpi-val" id="kpi-avgprice">—</div>
+            <div class="kpi-sub" id="kpi-avgprice-sub">정상/시즌 혼합</div>
+          </div>
+          <div class="kpi neutral">
+            <div class="kpi-label">세트 통합 원가</div>
+            <div class="kpi-val" id="kpi-cost">—</div>
+            <div class="kpi-sub" id="kpi-cost-sub">원가율 포함</div>
+          </div>
+          <div class="kpi neutral" id="kpi-gp-card">
+            <div class="kpi-label">세트당 공헌이익</div>
+            <div class="kpi-val" id="kpi-gp">—</div>
+            <div class="kpi-sub" id="kpi-gp-sub">채널비 차감 후</div>
+          </div>
+          <div class="kpi neutral" id="kpi-op-card">
+            <div class="kpi-label">세트당 영업이익</div>
+            <div class="kpi-val" id="kpi-op">—</div>
+            <div class="kpi-sub" id="kpi-op-sub">고정비 배분 후</div>
+          </div>
+        </div>
+
+        <p class="section-label">세트 1개 손익 분해 (가중 평균가 기준)</p>
+        <table class="pnl">
+          <thead>
+            <tr>
+              <th>항목</th>
+              <th style="text-align:right;">금액 (원)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="td-label">가중 평균 판매가</td>
+              <td class="td-right td-pos" id="pnl-price">—</td>
+            </tr>
+            <tr>
+              <td class="td-label">화장품 원료+용기+충진
+                <span class="td-pct" id="pnl-prod-pct">—</span>
+              </td>
+              <td class="td-right td-neg" id="pnl-prod">—</td>
+            </tr>
+            <tr>
+              <td class="td-label">패키지 원가
+                <span class="td-pct" id="pnl-pkg-pct">—</span>
+              </td>
+              <td class="td-right td-neg" id="pnl-pkg">—</td>
+            </tr>
+            <tr>
+              <td class="td-label">마스크팩 5매</td>
+              <td class="td-right td-neg" id="pnl-mask">—</td>
+            </tr>
+            <tr class="row-subtotal">
+              <td>통합 원가 합계
+                <span class="td-pct" id="pnl-total-cost-pct">—</span>
+              </td>
+              <td class="td-right td-neg" id="pnl-total-cost">—</td>
+            </tr>
+            <tr>
+              <td class="td-label">채널·마케팅비
+                <span class="td-pct" id="pnl-ch-pct">—</span>
+              </td>
+              <td class="td-right td-neg" id="pnl-ch">—</td>
+            </tr>
+            <tr class="row-subtotal">
+              <td>공헌이익</td>
+              <td class="td-right" id="pnl-gp">—</td>
+            </tr>
+            <tr>
+              <td class="td-sub">고정비 배분 (연간 ÷ 판매수량)</td>
+              <td class="td-right td-neg" id="pnl-fixed">—</td>
+            </tr>
+            <tr class="row-total">
+              <td style="color:var(--text);">세트당 영업이익</td>
+              <td class="td-right" id="pnl-op">—</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p class="section-label">원가 구조 시각화</p>
+        <div class="waterfall" id="waterfall"></div>
+
+        <div class="notice" id="set-notice"></div>
+      </div>
+
+      <!-- 탭: 연간 P&L -->
+      <div id="view-year" style="display:none;">
+        <div class="kpi-grid">
+          <div class="kpi neutral">
+            <div class="kpi-label">연간 매출</div>
+            <div class="kpi-val" id="y-revenue">—</div>
+            <div class="kpi-sub" id="y-revenue-sub">—</div>
+          </div>
+          <div class="kpi neutral">
+            <div class="kpi-label">연간 변동비</div>
+            <div class="kpi-val" id="y-varCost">—</div>
+            <div class="kpi-sub" id="y-varCost-sub">원가+채널비</div>
+          </div>
+          <div class="kpi neutral" id="y-gp-card">
+            <div class="kpi-label">연간 공헌이익</div>
+            <div class="kpi-val" id="y-gp">—</div>
+            <div class="kpi-sub" id="y-gp-sub">—</div>
+          </div>
+          <div class="kpi neutral" id="y-op-card">
+            <div class="kpi-label">연간 영업이익</div>
+            <div class="kpi-val" id="y-op">—</div>
+            <div class="kpi-sub" id="y-op-sub">—</div>
+          </div>
+        </div>
+
+        <p class="section-label">연간 P&L 상세</p>
+        <table class="pnl">
+          <thead>
+            <tr><th>항목</th><th style="text-align:right;">금액</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="td-label">연간 매출</td><td class="td-right td-pos" id="y-pnl-rev">—</td></tr>
+            <tr><td class="td-label">통합 원가 합계</td><td class="td-right td-neg" id="y-pnl-cost">—</td></tr>
+            <tr><td class="td-label">채널·마케팅비</td><td class="td-right td-neg" id="y-pnl-ch">—</td></tr>
+            <tr class="row-subtotal"><td>연간 공헌이익 <span class="td-pct" id="y-gp-pct">—</span></td><td class="td-right" id="y-pnl-gp">—</td></tr>
+            <tr><td class="td-sub">연간 고정비</td><td class="td-right td-neg" id="y-pnl-fixed">—</td></tr>
+            <tr class="row-total"><td>연간 영업이익</td><td class="td-right" id="y-pnl-op">—</td></tr>
+            <tr><td class="td-sub">영업이익률</td><td class="td-right" id="y-pnl-opm">—</td></tr>
+            <tr><td class="td-sub">BEP 수량 (연간)</td><td class="td-right" id="y-bep">—</td></tr>
+          </tbody>
+        </table>
+
+        <p class="section-label">원가율 시나리오 비교 (현재 설정 기준)</p>
+        <div id="scenario-compare"></div>
+
+        <div class="notice" id="year-notice"></div>
+      </div>
+
+      <!-- 탭: Gate 3 지표 -->
+      <div id="view-gate" style="display:none;">
+        <p style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.7;">Gate 3 초도 발주 결정 기준 — 4개 지표 충족 여부. 아래 목표값을 조정하면 Pass/Warn/Fail이 자동 업데이트됩니다.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+          <div class="input-group">
+            <div class="input-label">사전예약 목표 수량</div>
+            <div class="input-wrap">
+              <input type="number" id="g-preorder-target" value="1000" step="100" oninput="calcGate()">
+              <span class="input-unit right">세트</span>
+            </div>
+          </div>
+          <div class="input-group">
+            <div class="input-label">실제 사전예약 수량</div>
+            <div class="input-wrap">
+              <input type="number" id="g-preorder-actual" value="0" step="100" oninput="calcGate()">
+              <span class="input-unit right">세트</span>
+            </div>
+          </div>
+          <div class="input-group">
+            <div class="input-label">체험키트 전환율 목표</div>
+            <div class="input-wrap">
+              <input type="number" id="g-conv-target" value="10" step="1" oninput="calcGate()">
+              <span class="input-unit right">%</span>
+            </div>
+          </div>
+          <div class="input-group">
+            <div class="input-label">실제 전환율</div>
+            <div class="input-wrap">
+              <input type="number" id="g-conv-actual" value="0" step="1" oninput="calcGate()">
+              <span class="input-unit right">%</span>
+            </div>
+          </div>
+          <div class="input-group">
+            <div class="input-label">CAC 목표 상한</div>
+            <div class="input-wrap">
+              <input type="number" id="g-cac-target" value="50000" step="1000" oninput="calcGate()">
+              <span class="input-unit right">원</span>
+            </div>
+          </div>
+          <div class="input-group">
+            <div class="input-label">실제 CAC</div>
+            <div class="input-wrap">
+              <input type="number" id="g-cac-actual" value="0" step="1000" oninput="calcGate()">
+              <span class="input-unit right">원</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="section-label">Gate 3 판정 결과</p>
+        <div class="gate-grid" id="gate-result"></div>
+
+        <div class="notice" id="gate-notice" style="margin-top:14px;"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  내부 검토용 — 실제 비티진 견적 회신 후 수치 업데이트 필요 · 채널비·고정비는 추정값 기준
+</div>
+
+<script>
+let currentTab = 'set';
+
+function fmt(n) {
+  if (isNaN(n)) return '—';
+  return Math.round(n).toLocaleString('ko-KR');
+}
+function fmtW(n) {
+  if (isNaN(n)) return '—';
+  const abs = Math.abs(Math.round(n));
+  const sign = n < 0 ? '△ ' : '';
+  if (abs >= 100000000) return sign + (Math.round(abs/10000000)/10).toFixed(1) + '억';
+  if (abs >= 10000000) return sign + Math.round(abs/10000000) + '천만';
+  if (abs >= 1000000) return sign + (Math.round(abs/100000)/10).toFixed(1) + '백만';
+  return sign + abs.toLocaleString('ko-KR');
+}
+function pct(n) { return isNaN(n) ? '—' : Math.round(n*10)/10 + '%'; }
+
+function updateSlider() {
+  const v = +document.getElementById('normalRatio').value;
+  const slider = document.getElementById('normalSlider');
+  slider.value = v;
+  updateSliderBg(slider);
+  document.getElementById('seasonRatioLabel').textContent = '시즌가 ' + (100-v) + '%';
+}
+function updateSliderBg(el) {
+  const min = +el.min, max = +el.max, val = +el.value;
+  const pct = ((val - min) / (max - min)) * 100;
+  el.style.background = `linear-gradient(to right, var(--accent) ${pct}%, var(--border) ${pct}%)`;
+}
+function updateCostSlider() {
+  const v = +document.getElementById('costRate').value;
+  const slider = document.getElementById('costSlider');
+  slider.value = v;
+  updateCostSliderBg(slider);
+}
+function updateCostSliderBg(el) {
+  const min=+el.min,max=+el.max,val=+el.value;
+  const p=((val-min)/(max-min))*100;
+  let color = val<=18?'var(--accent)':val<=25?'var(--amber)':'var(--red)';
+  el.style.background=`linear-gradient(to right,${color} ${p}%,var(--border) ${p}%)`;
+}
+function updateChSlider() {
+  const v = +document.getElementById('channelRate').value;
+  const slider = document.getElementById('chSlider');
+  slider.value = v;
+  updateChSliderBg(slider);
+}
+function updateChSliderBg(el) {
+  const min=+el.min,max=+el.max,val=+el.value;
+  const p=((val-min)/(max-min))*100;
+  let color=val<=30?'var(--accent)':val<=40?'var(--amber)':'var(--red)';
+  el.style.background=`linear-gradient(to right,${color} ${p}%,var(--border) ${p}%)`;
+}
+
+function calc() {
+  const priceSet = +document.getElementById('priceSet').value || 190000;
+  const priceSeason = +document.getElementById('priceSeason').value || 168000;
+  const qty = +document.getElementById('qty').value || 12500;
+  const normalR = (+document.getElementById('normalRatio').value || 70) / 100;
+  const costRate = (+document.getElementById('costRate').value || 18) / 100;
+  const channelRate = (+document.getElementById('channelRate').value || 37) / 100;
+  const fixedTotal = +document.getElementById('fixedCost').value || 350000000;
+  const maskCost = +document.getElementById('costMask').value || 4000;
+
+  document.getElementById('seasonRatioLabel').textContent = '시즌가 ' + Math.round((1-normalR)*100) + '%';
+
+  // 가중 평균가
+  const avgPrice = priceSet * normalR + priceSeason * (1 - normalR);
+
+  // 통합 원가 (비율로 자동 계산, 단 직접 입력 우선)
+  const totalCostAuto = avgPrice * costRate;
+  const prodInput = document.getElementById('costProduct').value;
+  const pkgInput = document.getElementById('costPackage').value;
+
+  let prodCost, pkgCost;
+  if (prodInput !== '' || pkgInput !== '') {
+    prodCost = prodInput !== '' ? +prodInput : (totalCostAuto - maskCost) * 0.7;
+    pkgCost = pkgInput !== '' ? +pkgInput : (totalCostAuto - maskCost) * 0.3;
+  } else {
+    prodCost = (totalCostAuto - maskCost) * 0.65;
+    pkgCost = (totalCostAuto - maskCost) * 0.35;
+  }
+  const totalCost = prodCost + pkgCost + maskCost;
+  const actualCostRate = totalCost / avgPrice;
+
+  const chCost = avgPrice * channelRate;
+  const gp = avgPrice - totalCost - chCost;
+  const gpRate = gp / avgPrice;
+  const fixedPerUnit = fixedTotal / qty;
+  const op = gp - fixedPerUnit;
+  const opRate = op / avgPrice;
+
+  // 연간
+  const revenue = avgPrice * qty;
+  const totalVarCost = totalCost * qty;
+  const totalChCost = chCost * qty;
+  const totalGP = gp * qty;
+  const totalOP = op * qty;
+  const totalOPRate = totalOP / revenue;
+  const bep = fixedTotal / (gp > 0 ? gp : 1);
+
+  // 라벨 업데이트
+  document.getElementById('costAmtLabel').textContent = '세트당 ' + fmt(totalCost) + '원';
+  document.getElementById('chAmtLabel').textContent = '세트당 ' + fmt(chCost) + '원';
+
+  // KPI
+  document.getElementById('kpi-avgprice').textContent = fmt(avgPrice) + '원';
+  document.getElementById('kpi-avgprice-sub').textContent = '정상 ' + Math.round(normalR*100) + '% / 시즌 ' + Math.round((1-normalR)*100) + '%';
+  document.getElementById('kpi-cost').textContent = fmt(totalCost) + '원';
+  document.getElementById('kpi-cost-sub').textContent = '원가율 ' + pct(actualCostRate*100);
+
+  const gpCard = document.getElementById('kpi-gp-card');
+  gpCard.className = 'kpi ' + (gp>30000?'green':gp>0?'amber':'red');
+  document.getElementById('kpi-gp').textContent = (gp<0?'△ ':'+') + fmt(Math.abs(gp)) + '원';
+  document.getElementById('kpi-gp-sub').textContent = '공헌이익률 ' + pct(gpRate*100);
+
+  const opCard = document.getElementById('kpi-op-card');
+  opCard.className = 'kpi ' + (op>20000?'green':op>0?'amber':'red');
+  document.getElementById('kpi-op').textContent = (op<0?'△ ':'+') + fmt(Math.abs(op)) + '원';
+  document.getElementById('kpi-op-sub').textContent = '영업이익률 ' + pct(opRate*100);
+
+  // P&L rows
+  document.getElementById('pnl-price').textContent = fmt(avgPrice);
+  document.getElementById('pnl-prod').textContent = '△ ' + fmt(prodCost);
+  document.getElementById('pnl-prod-pct').textContent = pct(prodCost/avgPrice*100);
+  document.getElementById('pnl-prod-pct').className = 'td-pct ' + (prodCost/avgPrice<.15?'pct-g':'pct-a');
+  document.getElementById('pnl-pkg').textContent = '△ ' + fmt(pkgCost);
+  document.getElementById('pnl-pkg-pct').textContent = pct(pkgCost/avgPrice*100);
+  document.getElementById('pnl-pkg-pct').className = 'td-pct ' + (pkgCost/avgPrice<.12?'pct-g':'pct-a');
+  document.getElementById('pnl-mask').textContent = '△ ' + fmt(maskCost);
+  document.getElementById('pnl-total-cost').textContent = '△ ' + fmt(totalCost);
+  document.getElementById('pnl-total-cost-pct').textContent = pct(actualCostRate*100);
+  document.getElementById('pnl-total-cost-pct').className = 'td-pct ' + (actualCostRate<.18?'pct-g':actualCostRate<.25?'pct-a':'pct-r');
+  document.getElementById('pnl-ch').textContent = '△ ' + fmt(chCost);
+  document.getElementById('pnl-ch-pct').textContent = pct(channelRate*100);
+  document.getElementById('pnl-ch-pct').className = 'td-pct pct-a';
+  const gpEl = document.getElementById('pnl-gp');
+  gpEl.textContent = (gp<0?'△ ':'+') + fmt(Math.abs(gp));
+  gpEl.className = 'td-right ' + (gp>=0?'td-pos':'td-neg');
+  document.getElementById('pnl-fixed').textContent = '△ ' + fmt(fixedPerUnit);
+  const opEl = document.getElementById('pnl-op');
+  opEl.textContent = (op<0?'△ ':'+') + fmt(Math.abs(op));
+  opEl.className = 'td-right ' + (op>=0?'td-pos':'td-neg');
+
+  // Waterfall
+  const items = [
+    { label: '판매가', val: avgPrice, pct: 100, color: '#2A5C45' },
+    { label: '통합 원가', val: -totalCost, pct: actualCostRate*100, color: '#C0392B' },
+    { label: '채널·마케팅비', val: -chCost, pct: channelRate*100, color: '#C47D1A' },
+    { label: '고정비 배분', val: -fixedPerUnit, pct: fixedPerUnit/avgPrice*100, color: '#888' },
+    { label: '영업이익', val: op, pct: Math.abs(opRate*100), color: op>=0?'#2A5C45':'#C0392B' },
+  ];
+  const wf = document.getElementById('waterfall');
+  wf.innerHTML = items.map(it => {
+    const w = Math.min(Math.abs(it.pct), 100);
+    return `<div class="wf-row">
+      <span class="wf-label">${it.label}</span>
+      <div class="wf-bar-bg">
+        <div class="wf-fill" style="width:${w}%;background:${it.color}20;border-right:2px solid ${it.color};">
+          <span class="wf-fill-text" style="color:${it.color};">${Math.round(it.pct*10)/10}%</span>
+        </div>
+      </div>
+      <span class="wf-val" style="color:${it.val<0?'var(--red)':'var(--accent)'};">${it.val<0?'△ ':'+'}${fmt(Math.abs(it.val))}</span>
+    </div>`;
+  }).join('');
+
+  // Set notice
+  const sn = document.getElementById('set-notice');
+  if (op > 40000) { sn.className='notice ok'; sn.textContent='세트당 영업이익 '+fmt(op)+'원 — 온라인 D2C 목표 원가율 내 수익 구조 성립. 연간 영업이익 약 '+fmtW(totalOP)+' 예상.'; }
+  else if (op > 0) { sn.className='notice warn'; sn.textContent='세트당 영업이익 '+fmt(op)+'원 — 흑자이나 마진이 얇습니다. 채널비 절감 또는 원가율 조정 검토 권장.'; }
+  else { sn.className='notice bad'; sn.textContent='세트당 △'+fmt(Math.abs(op))+'원 적자 — 현재 구조에서는 손익 성립 불가. 원가율·채널비·판매가 조정 필요.'; }
+
+  // 연간 P&L
+  document.getElementById('y-revenue').textContent = fmtW(revenue);
+  document.getElementById('y-revenue-sub').textContent = qty.toLocaleString() + '세트 × 평균 ' + fmt(avgPrice) + '원';
+  document.getElementById('y-varCost').textContent = fmtW(totalVarCost + totalChCost);
+  document.getElementById('y-gp-card').className = 'kpi '+(totalGP>0?'green':'red');
+  document.getElementById('y-gp').textContent = (totalGP<0?'△ ':'')+fmtW(Math.abs(totalGP));
+  document.getElementById('y-gp-sub').textContent = '공헌이익률 '+pct(gpRate*100);
+  document.getElementById('y-op-card').className = 'kpi '+(totalOP>500000000?'green':totalOP>0?'amber':'red');
+  document.getElementById('y-op').textContent = (totalOP<0?'△ ':'')+fmtW(Math.abs(totalOP));
+  document.getElementById('y-op-sub').textContent = '영업이익률 '+pct(totalOPRate*100);
+
+  document.getElementById('y-pnl-rev').textContent = fmtW(revenue);
+  document.getElementById('y-pnl-cost').textContent = '△ '+fmtW(totalVarCost);
+  document.getElementById('y-pnl-ch').textContent = '△ '+fmtW(totalChCost);
+  document.getElementById('y-gp-pct').textContent = pct(gpRate*100);
+  document.getElementById('y-gp-pct').className = 'td-pct '+(gpRate>.3?'pct-g':gpRate>.15?'pct-a':'pct-r');
+  const ygpEl = document.getElementById('y-pnl-gp');
+  ygpEl.textContent = (totalGP<0?'△ ':'')+fmtW(Math.abs(totalGP));
+  ygpEl.className = 'td-right '+(totalGP>=0?'td-pos':'td-neg');
+  document.getElementById('y-pnl-fixed').textContent = '△ '+fmtW(fixedTotal);
+  const yopEl = document.getElementById('y-pnl-op');
+  yopEl.textContent = (totalOP<0?'△ ':'')+fmtW(Math.abs(totalOP));
+  yopEl.className = 'td-right '+(totalOP>=0?'td-pos':'td-neg');
+  document.getElementById('y-pnl-opm').textContent = pct(totalOPRate*100);
+  document.getElementById('y-bep').textContent = gp>0?Math.ceil(bep).toLocaleString()+'세트':'수익 없음 (공헌이익 음수)';
+
+  // 시나리오 비교
+  const rates = [0.15, 0.18, 0.22, actualCostRate];
+  const labels = ['원가율 15%','원가율 18%','원가율 22%','현재 설정'];
+  const sc = document.getElementById('scenario-compare');
+  sc.innerHTML = rates.map((r,i)=>{
+    const tc = avgPrice*r; const gpp = avgPrice-tc-chCost; const opp = gpp - fixedPerUnit;
+    const yop = opp*qty;
+    const isActive = i===3;
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <span style="font-size:11px;color:var(--text2);width:90px;flex-shrink:0;${isActive?'font-weight:700;color:var(--text);':''}">${labels[i]}</span>
+      <div style="flex:1;background:var(--surface2);border-radius:2px;height:20px;border:1px solid var(--border);overflow:hidden;">
+        <div style="height:100%;width:${Math.max(0,Math.min(100,(opp/avgPrice)*100+50))}%;background:${opp>0?'#2A5C45':'#C0392B'}20;border-right:2px solid ${opp>0?'#2A5C45':'#C0392B'};"></div>
+      </div>
+      <span style="font-size:12px;font-weight:700;width:70px;text-align:right;color:${opp>=0?'var(--accent)':'var(--red)'};">${opp<0?'△ ':''} ${fmtW(Math.abs(yop))}</span>
+    </div>`;
+  }).join('');
+
+  const yn = document.getElementById('year-notice');
+  if (totalOP > 500000000) { yn.className='notice ok'; yn.textContent='연간 영업이익 '+fmtW(totalOP)+' (이익률 '+pct(totalOPRate*100)+') — 사업 성립 가능. BEP '+Math.ceil(bep).toLocaleString()+'세트 달성 시 흑자 전환.'; }
+  else if (totalOP > 0) { yn.className='notice warn'; yn.textContent='연간 영업이익 '+fmtW(totalOP)+' — 흑자이나 마진 개선 여지 있음.'; }
+  else { yn.className='notice bad'; yn.textContent='연간 △'+fmtW(Math.abs(totalOP))+' 적자 — 원가율/채널비/판매량 조정 필요.'; }
+
+  calcGate();
+}
+
+function calcGate() {
+  const costRate = (+document.getElementById('costRate').value||18)/100;
+  const priceSet = +document.getElementById('priceSet').value||190000;
+  const qty = +document.getElementById('qty').value||12500;
+  const normalR = (+document.getElementById('normalRatio').value||70)/100;
+  const avgPrice = priceSet*normalR + (+document.getElementById('priceSeason').value||168000)*(1-normalR);
+  const costAmt = avgPrice*costRate;
+
+  const costTarget = 0.18;
+  const preorderTarget = +document.getElementById('g-preorder-target').value||1000;
+  const preorderActual = +document.getElementById('g-preorder-actual').value||0;
+  const convTarget = +document.getElementById('g-conv-target').value||10;
+  const convActual = +document.getElementById('g-conv-actual').value||0;
+  const cacTarget = +document.getElementById('g-cac-target').value||50000;
+  const cacActual = +document.getElementById('g-cac-actual').value||0;
+
+  const gates = [
+    {
+      label: 'ODM 원가율',
+      target: costTarget*100+'% 이하',
+      actual: pct(costRate*100),
+      pass: costRate <= costTarget,
+      warn: costRate <= 0.22,
+    },
+    {
+      label: '사전예약 수량',
+      target: preorderTarget.toLocaleString()+'세트 이상',
+      actual: preorderActual > 0 ? preorderActual.toLocaleString()+'세트' : '미측정',
+      pass: preorderActual >= preorderTarget && preorderActual > 0,
+      warn: preorderActual >= preorderTarget*0.7 && preorderActual > 0,
+    },
+    {
+      label: '체험키트 전환율',
+      target: convTarget+'% 이상',
+      actual: convActual > 0 ? convActual+'%' : '미측정',
+      pass: convActual >= convTarget && convActual > 0,
+      warn: convActual >= convTarget*0.7 && convActual > 0,
+    },
+    {
+      label: 'CAC (신규 획득비)',
+      target: cacTarget.toLocaleString()+'원 이하',
+      actual: cacActual > 0 ? cacTarget.toLocaleString()+'원' : '미측정',
+      pass: cacActual > 0 && cacActual <= cacTarget,
+      warn: cacActual > 0 && cacActual <= cacTarget*1.3,
+    },
+  ];
+
+  const gr = document.getElementById('gate-result');
+  gr.innerHTML = gates.map(g => {
+    const cls = g.pass ? 'g-pass' : g.warn ? 'g-warn' : 'g-fail';
+    const label = g.pass ? 'PASS' : g.warn ? 'CONDITIONAL' : 'CHECK';
+    return `<div class="gate-card">
+      <div class="gate-label">${g.label}</div>
+      <div class="gate-val" style="color:var(--text);">${g.actual}</div>
+      <div class="gate-label" style="color:var(--text3);font-weight:400;margin:2px 0 4px;">목표: ${g.target}</div>
+      <div class="gate-status ${cls}"><div class="gate-dot"></div>${label}</div>
+    </div>`;
+  }).join('');
+
+  const passCount = gates.filter(g=>g.pass).length;
+  const gn = document.getElementById('gate-notice');
+  if (passCount === 4) { gn.className='notice ok'; gn.textContent='4개 지표 모두 충족 — 초도 발주 30,000개 진행 가능.'; }
+  else if (passCount >= 2) { gn.className='notice warn'; gn.textContent=passCount+'/4 지표 충족 — 발주량 축소 (10,000~15,000개) 검토.'; }
+  else { gn.className='notice bad'; gn.textContent='지표 미충족 — 사업 보류 또는 추가 검증 필요.'; }
+}
+
+function setTab(t) {
+  currentTab = t;
+  ['set','year','gate'].forEach(k => {
+    document.getElementById('view-'+k).style.display = k===t?'block':'none';
+    document.getElementById('tab-'+k).className = 'stab'+(k===t?' active':'');
+  });
+}
+
+// Init
+['normalSlider','costSlider','chSlider'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) { const fn = id==='normalSlider'?updateSliderBg:id==='costSlider'?updateCostSliderBg:updateChSliderBg; fn(el); }
+});
+calc();
+</script>
+</body>
+</html>
