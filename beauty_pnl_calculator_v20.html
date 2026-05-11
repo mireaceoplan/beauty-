@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>화장품 세트 초도 발주 판단 시뮬레이터 v19</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;500;700;800&display=swap');
+  :root{
+    --bg:#F7F5F0;--surface:#FFFFFF;--surface2:#F2EFE9;--surface3:#FAF8F3;
+    --border:#E0DAD0;--text:#1A1814;--text2:#6B6560;--text3:#9E9890;
+    --accent:#2A5C45;--accent2:#1F4835;--accent-light:#E8F2EE;
+    --amber:#C47D1A;--amber-light:#FDF4E3;--red:#C0392B;--red-light:#FDECEA;
+    --gold:#B8963E;--blue:#1A5276;--blue-light:#EBF5FB;--purple:#6D3D8F;--purple-light:#F3ECF8;
+    --serif:'Noto Serif KR',serif;--sans:'Noto Sans KR',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;}
+  .header{background:var(--text);color:white;padding:28px 40px 24px;display:flex;align-items:flex-end;justify-content:space-between;border-bottom:3px solid var(--gold);}
+  .header-left h1{font-family:var(--serif);font-size:22px;font-weight:700;letter-spacing:-.4px;line-height:1.34;margin-bottom:6px;}
+  .header-left p{font-size:12px;color:rgba(255,255,255,.56);letter-spacing:.5px;}
+  .header-badge{font-size:11px;background:var(--gold);color:var(--text);padding:5px 13px;border-radius:2px;font-weight:800;letter-spacing:.6px;}
+  .container{max-width:1280px;margin:0 auto;padding:24px;}
+  .dash{position:sticky;top:0;z-index:20;background:rgba(247,245,240,.96);backdrop-filter:blur(8px);padding:14px 0 18px;margin-bottom:18px;border-bottom:1px solid var(--border);}
+  .dash-grid{display:grid;grid-template-columns:1.25fr repeat(6,1fr);gap:10px;align-items:stretch;}
+  .verdict-card{background:var(--surface);border:1px solid var(--border);border-left:6px solid var(--accent);border-radius:5px;padding:14px 16px;min-height:96px;display:flex;flex-direction:column;justify-content:center;}
+  .verdict-label{font-size:10px;font-weight:800;color:var(--text3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px;}
+  .verdict{font-size:30px;font-weight:900;line-height:1;margin-bottom:6px;color:var(--accent);}
+  .verdict-sub{font-size:11px;color:var(--text2);line-height:1.45;}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:12px 12px;min-height:96px;}
+  .kpi-lbl{font-size:10px;font-weight:800;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:7px;}
+  .kpi-val{font-size:19px;font-weight:800;line-height:1.05;margin-bottom:6px;letter-spacing:-.4px;}
+  .kpi-sub{font-size:10px;color:var(--text2);line-height:1.35;}
+  .kpi.green{background:var(--accent-light);border-color:#B5D9C8}.kpi.green .kpi-val{color:var(--accent)}
+  .kpi.amber{background:var(--amber-light);border-color:#F0D090}.kpi.amber .kpi-val{color:var(--amber)}
+  .kpi.red{background:var(--red-light);border-color:#F5B5B0}.kpi.red .kpi-val{color:var(--red)}
+  .kpi.blue{background:var(--blue-light);border-color:#AED6F1}.kpi.blue .kpi-val{color:var(--blue)}
+  .layout{display:grid;grid-template-columns:420px 1fr;gap:24px;align-items:start;}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:5px;margin-bottom:16px;overflow:hidden;}
+  .panel-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;background:#fff;}
+  .panel-head-num{width:23px;height:23px;background:var(--accent);color:white;border-radius:50%;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .panel-head h2{font-size:13px;font-weight:800;letter-spacing:.2px;}
+  .panel-body{padding:18px 18px;}
+  .section-title{font-size:10px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);margin:4px 0 12px;display:flex;align-items:center;gap:8px;}
+  .section-title::after{content:'';height:1px;background:var(--border);flex:1;}
+  .ig{margin-bottom:14px;}.ig:last-child{margin-bottom:0;}
+  .il{font-size:11px;font-weight:800;color:var(--text2);letter-spacing:.35px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .ih{font-size:10px;color:var(--text3);font-weight:500;letter-spacing:0;text-align:right;}
+  .iw{display:flex;align-items:center;border:1px solid var(--border);border-radius:4px;background:var(--surface2);overflow:hidden;transition:.15s;}
+  .iw:focus-within{border-color:var(--accent);background:white;box-shadow:0 0 0 2px rgba(42,92,69,.08);}
+  .iu{padding:0 10px;font-size:12px;color:var(--text3);background:var(--surface2);height:36px;display:flex;align-items:center;white-space:nowrap;flex-shrink:0;border-right:1px solid var(--border);}
+  .iu.r{border-right:none;border-left:1px solid var(--border);}
+  input[type="number"]{flex:1;border:none;background:transparent;padding:0 10px;height:36px;font-size:14px;font-family:var(--sans);font-weight:600;color:var(--text);outline:none;width:100%;min-width:0;-moz-appearance:textfield;}
+  input[type="number"]::-webkit-outer-spin-button,input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;}
+  input[type="checkbox"]{accent-color:var(--accent);width:16px;height:16px;}
+  input[type="range"]{width:100%;height:4px;border-radius:2px;outline:none;cursor:pointer;-webkit-appearance:none;background:var(--border);}
+  input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);border:2px solid white;box-shadow:0 1px 5px rgba(0,0,0,.25);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .grid4{display:grid;grid-template-columns:1.2fr 1fr 1fr .8fr;gap:8px;align-items:end;}
+  .dv{height:1px;background:var(--border);margin:16px 0;}
+  .toggle{display:flex;border:1px solid var(--border);background:var(--surface2);border-radius:4px;overflow:hidden;margin-bottom:14px;}
+  .toggle button{flex:1;border:none;background:transparent;padding:9px 8px;font-family:var(--sans);font-size:11px;font-weight:800;color:var(--text2);cursor:pointer;}
+  .toggle button.active{background:var(--accent);color:white;}
+  .note{font-size:11px;color:var(--text2);background:var(--surface2);border-left:3px solid var(--blue);padding:10px 12px;line-height:1.65;border-radius:0 4px 4px 0;margin:12px 0;}
+  .note.warn{border-left-color:var(--amber);background:var(--amber-light);color:#6B4210;}
+  .note.bad{border-left-color:var(--red);background:var(--red-light);color:#8B1C15;}
+  .note.ok{border-left-color:var(--accent);background:var(--accent-light);color:#1E4A35;}
+  .side-mini{font-size:10px;color:var(--text3);line-height:1.4;margin-top:5px;}
+  .cost-row{display:grid;grid-template-columns:24px 1fr 1.1fr 0.85fr 24px;gap:7px;align-items:center;margin-bottom:8px;}
+  .cost-row .lbl{font-size:11px;font-weight:800;color:var(--text2);}
+  .cost-row.head{margin-bottom:7px;}
+  .cost-row.head div{font-size:9px;font-weight:800;color:var(--text3);letter-spacing:.4px;text-transform:uppercase;}
+  .cost-row .iw input{height:32px;font-size:13px;}.cost-row .iu{height:32px;font-size:10px;padding:0 7px;}
+  /* === v20.1 추가: 부대비용 펼치기 === */
+  .cost-toggle{background:none;border:1px solid var(--border);color:var(--text3);width:24px;height:26px;border-radius:3px;cursor:pointer;font-size:10px;font-family:inherit;padding:0;display:flex;align-items:center;justify-content:center;transition:all .12s;}
+  .cost-toggle:hover{border-color:var(--accent);color:var(--accent);}
+  .cost-toggle::before{content:'▸';font-size:9px;}
+  .cost-row.expanded .cost-toggle::before{content:'▾';}
+  .cost-detail{display:none;grid-column:1 / -1;background:#FCFAF5;border:1px solid var(--border);border-radius:4px;padding:14px;margin:-2px 0 10px;font-size:11px;}
+  .cost-row.expanded + .cost-detail{display:block;}
+  .cd-section{margin-bottom:12px;}
+  .cd-section:last-child{margin-bottom:0;}
+  .cd-section-title{font-size:9px;font-weight:800;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:1px dashed var(--border);display:flex;align-items:center;gap:8px;}
+  .cd-section-title::after{content:'';flex:1;height:1px;}
+  .cd-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;}
+  .cd-cell{display:flex;flex-direction:column;gap:3px;}
+  .cd-cell b{font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.4px;text-transform:uppercase;}
+  .cd-cell span{font-size:12px;color:var(--text);font-weight:600;font-family:var(--sans);}
+  .cd-cell.input .iw{height:30px;}
+  .cd-cell.input .iw input{height:28px;font-size:12px;padding:0 8px;}
+  .cd-cell.input .iw .iu{height:28px;font-size:10px;padding:0 7px;}
+  .cd-toggle-row{display:flex;gap:0;align-items:center;}
+  .cd-toggle-row .seg{display:inline-flex;border:1px solid var(--border);border-radius:3px;overflow:hidden;background:white;}
+  .cd-toggle-row .seg button{font-family:var(--sans);font-size:10px;padding:5px 10px;background:transparent;border:none;color:var(--text2);cursor:pointer;font-weight:600;}
+  .cd-toggle-row .seg button.active{background:var(--accent);color:white;}
+  .cd-cell.derived{background:white;border:1px dashed var(--border);border-radius:3px;padding:6px 8px;}
+  .cd-cell.derived b{color:var(--text2);}
+  .cd-cell.derived span{font-weight:700;}
+  .cd-cell.warn span{color:var(--amber);}
+  .cd-cell.alert span{color:var(--red);}
+  .cd-cell.ok span{color:var(--accent);}
+  .subtotal-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .subtotal-grid .subtotal{margin:0;}
+  .subtotal{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:10px 12px;background:var(--accent-light);border:1px solid #B5D9C8;border-radius:4px;font-size:12px;font-weight:800;color:var(--accent);}
+  details{border:1px solid var(--border);border-radius:5px;background:var(--surface3);margin-top:10px;}
+  summary{cursor:pointer;padding:12px 14px;font-size:12px;font-weight:900;color:var(--text);list-style:none;display:flex;justify-content:space-between;align-items:center;}
+  summary::-webkit-details-marker{display:none;}
+  summary::after{content:'+';font-size:16px;color:var(--accent);font-weight:900;}
+  details[open] summary::after{content:'−';}
+  .details-body{padding:0 14px 14px;}
+  .channel-row{display:grid;grid-template-columns:1.3fr .85fr .85fr;gap:8px;align-items:end;margin-bottom:8px;}
+  .channel-row.head{margin-bottom:5px}.channel-row.head div{font-size:9px;font-weight:800;color:var(--text3);letter-spacing:.4px;text-transform:uppercase;}
+  .channel-name{font-size:11px;font-weight:800;color:var(--text2);padding-bottom:9px;}
+  .tabs{display:flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:16px;background:var(--surface2);}
+  .tab{flex:1;padding:11px 5px;text-align:center;font-size:11px;font-weight:900;cursor:pointer;color:var(--text2);border-right:1px solid var(--border);transition:.15s;}
+  .tab:last-child{border-right:none;}.tab.active{background:var(--accent);color:white;}.tab:not(.active):hover{background:var(--accent-light);color:var(--accent);}
+  .view-card{background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:18px;margin-bottom:16px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  table.pnl thead th{text-align:left;font-size:10px;font-weight:900;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;padding:0 0 8px;border-bottom:2px solid var(--text);}
+  table.pnl thead th:not(:first-child){text-align:right;}
+  table.pnl tbody td{padding:8px 0;border-bottom:1px solid var(--border);vertical-align:middle;}
+  table.pnl tbody tr:last-child td{border-bottom:none;}
+  .tr{text-align:right;font-weight:700;}.tl{color:var(--text);}.ts{color:var(--text2);font-size:12px;padding-left:12px;}.ts2{color:var(--text3);font-size:11px;padding-left:22px;}
+  .rss td{background:var(--surface2);font-weight:900;border-bottom:2px solid var(--border);}.rss td:first-child{padding-left:8px;}
+  .rto td{padding-top:11px;font-weight:900;font-size:14px;border-bottom:none;border-top:2px solid var(--text);}
+  .tpos{color:var(--accent)}.tneg{color:var(--red)}.tamber{color:var(--amber)}
+  .tp{font-size:10px;padding:2px 6px;border-radius:2px;font-weight:900;margin-left:4px;display:inline-block;}.pg{background:var(--accent-light);color:var(--accent)}.pa{background:var(--amber-light);color:var(--amber)}.pr{background:var(--red-light);color:var(--red)}.pb{background:var(--blue-light);color:var(--blue)}.pp{background:var(--purple-light);color:var(--purple)}
+  .price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+  .price-card{border:1px solid var(--border);border-radius:5px;padding:14px;text-align:center;background:white;}.price-card.main{border:2px solid var(--gold);background:#FFFDF5;}
+  .price-tag{font-size:10px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}.price-num{font-size:22px;font-weight:900;letter-spacing:-.5px;margin-bottom:2px;}.price-sub{font-size:11px;color:var(--text2);margin-bottom:8px;}
+  .badge{font-size:10px;font-weight:900;border-radius:12px;padding:3px 8px;display:inline-block;}
+  .barrow{display:grid;grid-template-columns:105px 1fr 110px;gap:9px;align-items:center;margin-bottom:9px;}
+  .barlbl{font-size:11px;font-weight:800;color:var(--text2);text-align:right;}.barbg{height:22px;border:1px solid var(--border);background:var(--surface2);border-radius:3px;overflow:hidden;}.barfill{height:100%;display:flex;align-items:center;padding-left:7px;border-right:2px solid var(--accent);background:var(--accent-light);}.bartext{font-size:10px;font-weight:900;white-space:nowrap;}.barval{text-align:right;font-size:12px;font-weight:900;}
+  .target-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}.target-card{border:1px solid var(--border);border-radius:5px;overflow:hidden;background:white;}.target-head{padding:10px 12px;font-size:12px;font-weight:900;color:white;}.target-body{padding:12px;}.target-line{display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:7px;}.target-line strong{font-weight:900;}.refbox{border:1px solid var(--border);background:var(--surface3);border-radius:5px;padding:13px;margin-top:12px;}.ref-title{font-size:11px;font-weight:900;color:var(--text2);margin-bottom:10px;}
+  .gate-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}.gate-card{border:1px solid var(--border);border-radius:5px;padding:13px 14px;background:white;}.gate-lbl{font-size:10px;font-weight:900;color:var(--text3);letter-spacing:.4px;text-transform:uppercase;margin-bottom:5px;}.gate-val{font-size:17px;font-weight:900;margin-bottom:4px;}.gate-st{font-size:10px;font-weight:900;display:flex;align-items:center;gap:5px;}.dot{width:8px;height:8px;border-radius:50%;}.pass{color:var(--accent)}.pass .dot{background:var(--accent)}.hold{color:var(--amber)}.hold .dot{background:var(--amber)}.kill{color:var(--red)}.kill .dot{background:var(--red)}
+  .risk-list{font-size:12px;line-height:1.7;color:var(--text2);padding-left:17px;}.risk-list li{margin-bottom:3px;}
+  .footer{text-align:center;padding:20px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);margin-top:16px;}
+  /* === v20 추가: 우측 결과 패널 sticky (대시보드 아래에서 시작) === */
+  .result-col{position:sticky;top:168px;align-self:start;max-height:calc(100vh - 184px);overflow-y:auto;padding-right:4px;}
+  .result-col::-webkit-scrollbar{width:6px;}
+  .result-col::-webkit-scrollbar-track{background:transparent;}
+  .result-col::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+  .result-col::-webkit-scrollbar-thumb:hover{background:var(--text3);}
+  /* === v20 추가: 편집/보고 모드 토글 === */
+  .mode-toggle{display:flex;align-items:center;gap:6px;padding:5px 11px;border-radius:3px;background:rgba(255,255,255,.1);cursor:pointer;font-size:11px;letter-spacing:.4px;font-weight:700;user-select:none;color:white;border:1px solid rgba(255,255,255,.15);}
+  .mode-toggle.editing{background:var(--red);border-color:var(--red);}
+  .mode-toggle .mt-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);}
+  .mode-toggle.editing .mt-dot{background:#FFD9D5;}
+  .header-right{display:flex;align-items:center;gap:10px;flex-direction:column;align-items:flex-end;}
+  .edit-banner{display:none;background:var(--red-light);border:1px solid var(--red);color:var(--red);padding:9px 14px;border-radius:4px;font-size:11px;font-weight:700;margin-bottom:14px;letter-spacing:.2px;}
+  .edit-banner.show{display:block;}
+  /* 잠긴 인풋 (보고 모드) */
+  .iw.locked{background:repeating-linear-gradient(45deg,var(--surface2),var(--surface2) 6px,#ECE9E2 6px,#ECE9E2 7px);border-color:var(--border);}
+  .iw.locked input{cursor:not-allowed;color:var(--text3);font-weight:500;}
+  .iw.locked .iu{background:transparent;}
+  /* === Gate ABC 상세 카드 === */
+  .gate-block{border:1px solid var(--border);border-radius:5px;margin-bottom:10px;overflow:hidden;background:white;}
+  .gate-block-head{display:flex;align-items:center;padding:11px 14px;gap:10px;background:var(--surface2);border-bottom:1px solid var(--border);}
+  .gate-tag{font-family:var(--sans);font-size:11px;padding:3px 9px;border-radius:3px;font-weight:900;letter-spacing:.6px;background:var(--text);color:white;}
+  .gate-block-title{font-size:13px;font-weight:800;flex:1;letter-spacing:-.1px;}
+  .gate-block-status{font-size:11px;font-weight:900;padding:3px 11px;border-radius:3px;letter-spacing:.4px;}
+  .gate-block-status.pass{background:var(--accent-light);color:var(--accent);}
+  .gate-block-status.hold{background:var(--amber-light);color:var(--amber);}
+  .gate-block-status.kill{background:var(--red-light);color:var(--red);}
+  .gate-block-body{padding:11px 14px;font-size:12px;color:var(--text2);}
+  .gate-metric{display:grid;grid-template-columns:1fr auto auto;gap:14px;padding:5px 0;border-bottom:1px dashed var(--border);align-items:baseline;}
+  .gate-metric:last-child{border-bottom:none;}
+  .gate-metric .gm-name{color:var(--text);font-weight:600;}
+  .gate-metric .gm-val{font-family:var(--sans);font-weight:800;color:var(--text);}
+  .gate-metric .gm-th{color:var(--text3);font-size:11px;font-weight:600;}
+  .gate-reco{margin-top:9px;padding:9px 12px;background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 4px 4px 0;font-size:11px;color:var(--text2);line-height:1.65;}
+  .gate-logic{font-size:10px;color:var(--text3);font-weight:600;margin-left:auto;letter-spacing:.3px;}
+  /* 자금 카드 3-line variant */
+  .kpi.cash3 .kpi-val{font-size:17px;}
+  .kpi.cash3 .cash-rows{margin-top:4px;font-size:10px;color:var(--text2);line-height:1.5;}
+  .kpi.cash3 .cash-rows div{display:flex;justify-content:space-between;}
+  .kpi.cash3 .cash-rows b{font-weight:600;color:var(--text3);}
+  .kpi.cash3 .cash-rows .pos{color:var(--accent);}
+  @media(max-width:1050px){.layout{grid-template-columns:1fr}.dash{position:static}.dash-grid{grid-template-columns:1fr 1fr}.verdict-card{grid-column:1/-1}.header{padding:22px;flex-direction:column;align-items:flex-start;gap:10px}}
+  @media(max-width:720px){.container{padding:14px}.price-grid,.target-grid,.grid2,.grid3,.gate-grid{grid-template-columns:1fr}.dash-grid{grid-template-columns:1fr}.cost-row{grid-template-columns:26px 1fr}.cost-row .iw,.cost-row .lbl:nth-child(n){grid-column:auto}.tabs{overflow-x:auto}.tab{min-width:110px}.header-left h1{font-size:18px}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <h1>모던 한방 안티에이징 선물 브랜드<br>초도 발주 판단 시뮬레이터</h1>
+    <p>내부 검토용 · 비티진 ODM 견적 검토 · v20</p>
+  </div>
+  <div class="header-right">
+    <div class="header-badge">대외비</div>
+    <div class="mode-toggle" id="modeToggle" onclick="toggleEditMode()">
+      <span class="mt-dot"></span>
+      <span class="mt-text">보고 모드 · 임계치 잠금</span>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="edit-banner" id="editBanner">⚠️ 편집 모드 — 게이트 임계치가 표준값에서 변경 가능합니다. 모든 결과에 비표준 임계치 표시가 따라다닙니다.</div>
+  <div class="dash">
+    <div class="dash-grid">
+      <div class="verdict-card" id="verdictCard">
+        <div class="verdict-label">현재 판정</div>
+        <div class="verdict" id="verdictText">—</div>
+        <div class="verdict-sub" id="verdictSub">입력값을 기준으로 자동 판정됩니다.</div>
+      </div>
+      <div class="kpi" id="dashCostCard"><div class="kpi-lbl">세트 총원가</div><div class="kpi-val" id="dashTotalCost">—</div><div class="kpi-sub" id="dashTotalCostSub">크림+앰플+부대비용</div></div>
+      <div class="kpi" id="dashNormalCard"><div class="kpi-lbl">정상가 원가율</div><div class="kpi-val" id="dashNormalRate">—</div><div class="kpi-sub">정상가 기준</div></div>
+      <div class="kpi" id="dashSeasonCard"><div class="kpi-lbl">시즌가 원가율</div><div class="kpi-val" id="dashSeasonRate">—</div><div class="kpi-sub">시즌가 기준</div></div>
+      <div class="kpi" id="dashContributionCard"><div class="kpi-lbl">세트당 공헌이익</div><div class="kpi-val" id="dashContribution">—</div><div class="kpi-sub" id="dashContributionSub">정상가 기준</div></div>
+      <div class="kpi" id="dashBepCard"><div class="kpi-lbl">BEP 필요 수량</div><div class="kpi-val" id="dashBepQty">—</div><div class="kpi-sub" id="dashBepSub">초도 재고 대비</div></div>
+      <div class="kpi cash3" id="dashInvestCard">
+        <div class="kpi-lbl">총 초기 투입금</div>
+        <div class="kpi-val" id="dashInvest">—</div>
+        <div class="cash-rows">
+          <div><b>지급총액</b><span id="dashPay">—</span></div>
+          <div><b>VAT 환급</b><span class="pos" id="dashVat">—</span></div>
+          <div><b>실 부담</b><span id="dashReal">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="panel">
+        <div class="panel-head"><div class="panel-head-num">1</div><h2>판매가 설정</h2></div>
+        <div class="panel-body">
+          <div class="section-title">가격 유형</div>
+          <div class="grid3">
+            <div class="ig"><div class="il">정상가<span class="ih">자사몰 기준</span></div><div class="iw"><input type="number" id="priceNormal" value="190000" step="1000" oninput="calc()"><span class="iu r">원</span></div></div>
+            <div class="ig"><div class="il">시즌가<span class="ih">추석/어버이날</span></div><div class="iw"><input type="number" id="priceSeason" value="168000" step="1000" oninput="calc()"><span class="iu r">원</span></div></div>
+            <div class="ig"><div class="il">공구가<span class="ih">라이브/공구</span></div><div class="iw"><input type="number" id="priceGroup" value="148000" step="1000" oninput="calc()"><span class="iu r">원</span></div></div>
+          </div>
+          <div class="section-title">단품 판매가 / 배분 기준</div>
+          <div class="grid2">
+            <div class="ig"><div class="il">크림 단품가<span class="ih">50ml</span></div><div class="iw"><input type="number" id="priceCream" value="119000" step="1000" oninput="resetAllocByPrice();calc()"><span class="iu r">원</span></div></div>
+            <div class="ig"><div class="il">앰플 단품가<span class="ih">30ml</span></div><div class="iw"><input type="number" id="priceAmpoule" value="89000" step="1000" oninput="resetAllocByPrice();calc()"><span class="iu r">원</span></div></div>
+          </div>
+          <div class="section-title">VAT 손익 기준</div>
+          <div class="toggle">
+            <button type="button" id="vatInclBtn" onclick="setVatMode('include')">VAT 포함 기준</button>
+            <button type="button" id="vatExclBtn" class="active" onclick="setVatMode('exclude')">VAT 제외 기준</button>
+          </div>
+          <div class="section-title">VAT 환급 가정</div>
+          <div class="toggle">
+            <button type="button" id="vatRefundOnBtn" class="active" onclick="setVatRefund(true)">법인 (환급 O)</button>
+            <button type="button" id="vatRefundOffBtn" onclick="setVatRefund(false)">간이 (환급 X)</button>
+          </div>
+          <div class="note">내부 손익·원가율·BEP는 <b>VAT 제외 매출 기준</b>으로 보는 것을 권장합니다. 법인 사업자는 매입세액 공제로 VAT를 분기 환급받으므로 <b>실 부담 = 지급총액 − 환급예정</b>입니다.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><div class="panel-head-num">2</div><h2>원가 구조 설정</h2></div>
+        <div class="panel-body">
+          <div class="section-title">비티진 통합 원가 입력</div>
+          <div class="grid2">
+            <div class="ig"><div class="il">크림 통합 원가<span class="ih">통합 단가</span></div><div class="iw"><input type="number" id="costCream" value="18000" step="100" oninput="calc()"><span class="iu r">원</span></div></div>
+            <div class="ig"><div class="il">앰플 통합 원가<span class="ih">통합 단가</span></div><div class="iw"><input type="number" id="costAmpoule" value="14000" step="100" oninput="calc()"><span class="iu r">원</span></div></div>
+          </div>
+          <div class="note">비티진 견적은 세부 항목 분리가 어려운 <b>통합 단가 기준</b>으로 회신될 가능성이 높습니다. 크림/앰플 각각 <b>내용물 + 용기 + 펌프/캡 + 라벨 + 단상자 + 충진비 포함</b> 기준으로 입력해주세요.</div>
+          <div class="section-title">기타 부대비용</div>
+          <div class="cost-row head"><div></div><div>항목</div><div>공급가액</div><div>MOQ</div><div></div></div>
+          <div id="extraCostRows"></div>
+          <div class="subtotal-grid">
+            <div class="subtotal"><span>세트당 평균<br><small style="font-weight:400;color:var(--text3);">손익 기준</small></span><strong id="extraSubtotal">—</strong></div>
+            <div class="subtotal" style="background:var(--blue-light);border-color:var(--blue-border);"><span>초도 발주액<br><small style="font-weight:400;color:var(--text3);">MOQ 반영</small></span><strong id="extraOrderTotal" style="color:var(--blue);">—</strong></div>
+          </div>
+          <div class="side-mini">계산식: 각 항목별 단가 × 포함 여부 × 적용률. 쇼핑백/리본처럼 선택 적용되는 항목은 적용률로 보정합니다.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><div class="panel-head-num">3</div><h2>채널 · CAC · 물류</h2></div>
+        <div class="panel-body">
+          <div class="grid2">
+            <div class="ig"><div class="il">CAC<span class="ih">고객획득비용</span></div><div class="iw"><input type="number" id="cac" value="50000" step="1000" oninput="calc()"><span class="iu r">원</span></div></div>
+            <div class="ig"><div class="il">배송/물류비<span class="ih">세트 1개</span></div><div class="iw"><input type="number" id="shipCost" value="3500" step="100" oninput="calc()"><span class="iu r">원</span></div></div>
+          </div>
+          <details open>
+            <summary>채널별 판매 비중 · 수수료 설정</summary>
+            <div class="details-body">
+              <div class="channel-row head"><div>채널</div><div>판매 비중</div><div>수수료율</div></div>
+              <div id="channelRows"></div>
+              <div class="subtotal"><span>가중 평균 채널 수수료율</span><strong id="weightedFee">—</strong></div>
+              <div class="side-mini" id="channelWarn">판매 비중 합계가 100%가 되도록 입력해주세요.</div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><div class="panel-head-num">4</div><h2>초기 고정비 · MOQ</h2></div>
+        <div class="panel-body">
+          <div class="section-title">초기 고정비</div>
+          <div class="grid2">
+            <div class="ig"><div class="il">패키지 디자인비</div><div class="iw"><input type="number" id="fxPackage" value="3000000" step="100000" oninput="calc()"><span class="iu r">원</span></div></div>
+            <div class="ig"><div class="il">로고/BI 개발비</div><div class="iw"><input type="number" id="fxBI" value="2000000" step="100000" oninput="calc()"><span class="iu r">원</span></div></div>
+            <div class="ig"><div class="il">상세페이지 제작비</div><div class="iw"><input type="number" id="fxLanding" value="3000000" step="100000" oninput="calc()"><span class="iu r">원</span></div></div>
+            <div class="ig"><div class="il">제품 촬영비</div><div class="iw"><input type="number" id="fxPhoto" value="3000000" step="100000" oninput="calc()"><span class="iu r">원</span></div></div>
+            <div class="ig"><div class="il">시제품 개발비</div><div class="iw"><input type="number" id="fxSample" value="3000000" step="100000" oninput="calc()"><span class="iu r">원</span></div></div>
+            <div class="ig"><div class="il">피부 자극 테스트</div><div class="iw"><input type="number" id="fxIrritation" value="2000000" step="100000" oninput="calc()"><span class="iu r">원</span></div></div>
+            <div class="ig"><div class="il">안정성 테스트</div><div class="iw"><input type="number" id="fxStability" value="2000000" step="100000" oninput="calc()"><span class="iu r">원</span></div></div>
+            <div class="ig"><div class="il">기능성 보고/인증</div><div class="iw"><input type="number" id="fxFunction" value="1500000" step="100000" oninput="calc()"><span class="iu r">원</span></div></div>
+            <div class="ig"><div class="il">상표 출원비</div><div class="iw"><input type="number" id="fxTrademark" value="3000000" step="100000" oninput="calc()"><span class="iu r">원</span></div></div>
+            <div class="ig"><div class="il">초기 인플루언서 시딩</div><div class="iw"><input type="number" id="fxInfluencer" value="10000000" step="100000" oninput="calc()"><span class="iu r">원</span></div></div>
+            <div class="ig"><div class="il">기타 고정비</div><div class="iw"><input type="number" id="fxEtc" value="0" step="100000" oninput="calc()"><span class="iu r">원</span></div></div>
+          </div>
+          <div class="subtotal"><span>초기 고정비 합계</span><strong id="fixedTotal">—</strong></div>
+          <div class="dv"></div>
+          <div class="section-title">MOQ / 초도 발주</div>
+          <div class="grid2">
+            <div class="ig"><div class="il">크림 MOQ</div><div class="iw"><input type="number" id="moqCream" value="3000" step="100" oninput="calc()"><span class="iu r">개</span></div></div>
+            <div class="ig"><div class="il">앰플 MOQ</div><div class="iw"><input type="number" id="moqAmpoule" value="3000" step="100" oninput="calc()"><span class="iu r">개</span></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div class="panel-head-num">5</div><h2>게이트 임계치 (관리자)</h2></div>
+        <div class="panel-body">
+          <div class="section-title">자금 한도</div>
+          <div class="ig"><div class="il">A: 본부 자금 한도<span class="ih">총 투입금 상한</span></div><div class="iw" id="iwAffordCap"><input type="number" id="thAffordCap" value="150000000" step="10000000" oninput="calc()"><span class="iu r">원</span></div></div>
+          <div class="section-title">손익 (B-1 그리고 B-2)</div>
+          <div class="grid2">
+            <div class="ig"><div class="il">B-1: 정상가 원가율<span class="ih">최대</span></div><div class="iw" id="iwCostRate"><input type="number" id="thCostRate" value="18" step="1" oninput="calc()"><span class="iu r">%</span></div></div>
+            <div class="ig"><div class="il">B-2: 공구가 공헌이익률<span class="ih">최소</span></div><div class="iw" id="iwGroupCM"><input type="number" id="thGroupCM" value="30" step="1" oninput="calc()"><span class="iu r">%</span></div></div>
+          </div>
+          <div class="section-title">회수 (C-1 또는 C-2)</div>
+          <div class="grid2">
+            <div class="ig"><div class="il">C-1: BEP 비중<span class="ih">최대</span></div><div class="iw" id="iwBep"><input type="number" id="thBep" value="50" step="5" oninput="calc()"><span class="iu r">%</span></div></div>
+            <div class="ig"><div class="il">C-2: CAC<span class="ih">최대</span></div><div class="iw" id="iwCac"><input type="number" id="thCac" value="50000" step="5000" oninput="calc()"><span class="iu r">원</span></div></div>
+          </div>
+          <div class="note" id="thresholdNote">보고 모드에서는 임계치가 잠금 상태입니다. 변경하려면 우측 상단 모드 토글을 사용하세요.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-col">
+      <div class="tabs">
+        <div class="tab active" id="tab-price" onclick="setTab('price')">가격별 손익</div>
+        <div class="tab" id="tab-set" onclick="setTab('set')">세트 손익 분해</div>
+        <div class="tab" id="tab-guide" onclick="setTab('guide')">단품 원가 목표</div>
+        <div class="tab" id="tab-gate" onclick="setTab('gate')">발주 판단</div>
+      </div>
+
+      <div id="view-price" class="view-card">
+        <div class="section-title">정상가 · 시즌가 · 공구가 비교</div>
+        <div class="price-grid" id="priceCards"></div>
+        <div style="overflow-x:auto;">
+          <table class="pnl">
+            <thead><tr><th>항목</th><th>정상가</th><th>시즌가</th><th>공구가/라이브가</th></tr></thead>
+            <tbody id="priceTable"></tbody>
+          </table>
+        </div>
+        <div class="note" id="priceNotice"></div>
+      </div>
+
+      <div id="view-set" class="view-card" style="display:none;">
+        <div class="grid4" style="margin-bottom:14px;">
+          <div class="kpi"><div class="kpi-lbl">크림 통합 원가</div><div class="kpi-val" id="setCreamKpi">—</div><div class="kpi-sub">통합 단가</div></div>
+          <div class="kpi"><div class="kpi-lbl">앰플 통합 원가</div><div class="kpi-val" id="setAmpKpi">—</div><div class="kpi-sub">통합 단가</div></div>
+          <div class="kpi"><div class="kpi-lbl">기타 부대비용</div><div class="kpi-val" id="setExtraKpi">—</div><div class="kpi-sub">적용률 반영</div></div>
+          <div class="kpi" id="setTotalCard"><div class="kpi-lbl">세트 총원가</div><div class="kpi-val" id="setTotalKpi">—</div><div class="kpi-sub" id="setTotalSub">—</div></div>
+        </div>
+        <div class="section-title">세트 원가 분해</div>
+        <table class="pnl" style="margin-bottom:18px;">
+          <thead><tr><th>항목</th><th>금액</th><th>비중</th></tr></thead>
+          <tbody id="setCostBreakdown"></tbody>
+        </table>
+        <div class="section-title">세트 1개 판매 시 공헌이익</div>
+        <table class="pnl" style="margin-bottom:18px;">
+          <thead><tr><th>항목</th><th>정상가</th><th>시즌가</th><th>공구가</th></tr></thead>
+          <tbody id="contributionTable"></tbody>
+        </table>
+        <div class="section-title">정상가 기준 손익 워터폴</div>
+        <div id="waterfall"></div>
+        <div class="note" id="setNotice"></div>
+      </div>
+
+      <div id="view-guide" class="view-card" style="display:none;">
+        <div class="section-title">크림·앰플 단품 원가 목표 가이드</div>
+        <div class="grid2" style="margin-bottom:14px;">
+          <div class="ig"><div class="il">크림 배분율<span class="ih">기본 57.2%</span></div><div class="iw"><input type="number" id="creamAlloc" value="57.2" step="0.1" oninput="syncAlloc('cream');calc()"><span class="iu r">%</span></div></div>
+          <div class="ig"><div class="il">앰플 배분율<span class="ih">기본 42.8%</span></div><div class="iw"><input type="number" id="ampAlloc" value="42.8" step="0.1" oninput="syncAlloc('amp');calc()"><span class="iu r">%</span></div></div>
+        </div>
+        <div class="target-grid" id="targetCards"></div>
+        <div class="refbox">
+          <div class="ref-title">레퍼런스 바 — 현재 입력 원가 vs 외부 기준</div>
+          <div id="refBars"></div>
+          <div class="note" id="guideNotice" style="margin-bottom:0;"></div>
+        </div>
+      </div>
+
+      <div id="view-gate" class="view-card" style="display:none;">
+        <div class="section-title">자금 · MOQ 카드</div>
+        <div class="gate-grid" style="margin-bottom:16px;" id="moqCards"></div>
+        <div class="section-title">게이트 A · B · C 판정 사유</div>
+        <div id="gateCards" style="margin-bottom:16px;"></div>
+        <div class="section-title">주요 리스크 및 개선 가이드</div>
+        <div class="note" id="gateNotice"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">내부 검토용 — 비티진 견적, 실제 CAC, 채널 수수료, 사전예약 결과 입력 후 초도 발주 판단에 활용</div>
+
+<script>
+let vatMode='exclude';
+let vatRefund=true;     // 법인=환급 O, 간이=환급 X
+let editMode=false;     // 보고 모드 = 임계치 잠금
+const extraItems=[
+  {id:'mask',name:'마스크팩 5매',unit:4000,supply:40000000,moq:10000,vat:'excl',rate:100,on:true},
+  {id:'seal',name:'스티커/봉인씰',unit:100,supply:500000,moq:5000,vat:'excl',rate:100,on:true},
+  {id:'card',name:'선물카드',unit:300,supply:300000,moq:1000,vat:'excl',rate:100,on:true},
+  {id:'bag',name:'쇼핑백',unit:700,supply:700000,moq:1000,vat:'excl',rate:60,on:true},
+  {id:'ribbon',name:'리본/포장재',unit:500,supply:250000,moq:500,vat:'excl',rate:40,on:true},
+  {id:'etc',name:'기타 (통합 패키지 등)',unit:0,supply:0,moq:0,vat:'excl',rate:100,on:false}
+];
+const channels=[
+  {id:'own',name:'자사몰',share:40,fee:3},
+  {id:'naver',name:'네이버 스마트스토어',share:20,fee:6},
+  {id:'kakao',name:'카카오톡 선물하기',share:20,fee:12},
+  {id:'live',name:'라이브커머스',share:10,fee:15},
+  {id:'influencer',name:'인플루언서 공구',share:10,fee:20}
+];
+const fixedIds=['fxPackage','fxBI','fxLanding','fxPhoto','fxSample','fxIrritation','fxStability','fxFunction','fxTrademark','fxInfluencer','fxEtc'];
+
+function initRows(){
+  document.getElementById('extraCostRows').innerHTML=extraItems.map(it=>`
+    <div class="cost-row" id="exrow_${it.id}">
+      <div><input type="checkbox" id="ex_${it.id}_on" ${it.on?'checked':''} onchange="calc()"></div>
+      <div class="lbl">${it.name}</div>
+      <div class="iw"><input type="number" id="ex_${it.id}_supply" value="${it.supply}" step="100000" min="0" oninput="calc()"><span class="iu r">원</span></div>
+      <div class="iw"><input type="number" id="ex_${it.id}_moq" value="${it.moq}" step="100" min="0" oninput="calc()"><span class="iu r">개</span></div>
+      <div><button type="button" class="cost-toggle" onclick="toggleExtraDetail('${it.id}')" title="상세 (VAT · 적용률 · 실제 발주 · 자동 계산)"></button></div>
+    </div>
+    <div class="cost-detail" id="exdet_${it.id}">
+      <div class="cd-section">
+        <div class="cd-section-title">견적 옵션</div>
+        <div class="cd-grid">
+          <div class="cd-cell">
+            <b>VAT 옵션</b>
+            <div class="cd-toggle-row">
+              <div class="seg">
+                <button type="button" id="ex_${it.id}_vatincl" class="${it.vat==='incl'?'active':''}" onclick="setItemVat('${it.id}','incl')">VAT 포함</button>
+                <button type="button" id="ex_${it.id}_vatexcl" class="${it.vat==='excl'?'active':''}" onclick="setItemVat('${it.id}','excl')">VAT 제외</button>
+              </div>
+            </div>
+          </div>
+          <div class="cd-cell derived">
+            <b>환산 단가 (공급가액 ÷ MOQ)</b>
+            <span id="ex_${it.id}_unitDerived">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="cd-section">
+        <div class="cd-section-title">적용률 · 실제 발주수량</div>
+        <div class="cd-grid">
+          <div class="cd-cell input">
+            <b>적용률</b>
+            <div class="iw"><input type="number" id="ex_${it.id}_rate" value="${it.rate}" min="0" max="100" step="5" oninput="calc()"><span class="iu r">%</span></div>
+          </div>
+          <div class="cd-cell input">
+            <b>실제 발주수량 (선택)</b>
+            <div class="iw"><input type="number" id="ex_${it.id}_orderManual" value="" step="100" min="0" placeholder="비우면 자동" oninput="calc()"><span class="iu r">개</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="cd-section">
+        <div class="cd-section-title">자동 계산 결과</div>
+        <div class="cd-grid">
+          <div class="cd-cell derived"><b>세트당 필요수량</b><span id="ex_${it.id}_need">—</span></div>
+          <div class="cd-cell derived"><b>실제 발주수량</b><span id="ex_${it.id}_orderShow">—</span></div>
+          <div class="cd-cell derived" id="ex_${it.id}_leftcell"><b>잔여수량</b><span id="ex_${it.id}_left">—</span></div>
+          <div class="cd-cell derived" id="ex_${it.id}_leftvalcell"><b>잔여재고액</b><span id="ex_${it.id}_leftval">—</span></div>
+          <div class="cd-cell derived"><b>세트당 손익 부담</b><span id="ex_${it.id}_pickup">—</span></div>
+          <div class="cd-cell derived"><b>정상가 대비 원가율</b><span id="ex_${it.id}_costrate">—</span></div>
+        </div>
+      </div>
+    </div>`).join('');
+  document.getElementById('channelRows').innerHTML=channels.map(ch=>`
+    <div class="channel-row">
+      <div class="channel-name">${ch.name}</div>
+      <div class="iw"><input type="number" id="ch_${ch.id}_share" value="${ch.share}" min="0" max="100" step="5" oninput="calc()"><span class="iu r">%</span></div>
+      <div class="iw"><input type="number" id="ch_${ch.id}_fee" value="${ch.fee}" min="0" max="50" step="0.5" oninput="calc()"><span class="iu r">%</span></div>
+    </div>`).join('');
+}
+function toggleExtraDetail(id){
+  document.getElementById('exrow_'+id).classList.toggle('expanded');
+}
+function setItemVat(id,mode){
+  const it=extraItems.find(x=>x.id===id);if(!it)return;
+  it.vat=mode;
+  document.getElementById(`ex_${id}_vatincl`).classList.toggle('active',mode==='incl');
+  document.getElementById(`ex_${id}_vatexcl`).classList.toggle('active',mode==='excl');
+  calc();
+}
+function num(id,def=0){const el=document.getElementById(id);const v=el?parseFloat(el.value):NaN;return isNaN(v)?def:v;}
+function fmt(n){if(!isFinite(n))return'—';return Math.round(n).toLocaleString('ko-KR');}
+function won(n){return (n<0?'△ ':'')+fmt(Math.abs(n))+'원';}
+function fmtW(n){if(!isFinite(n))return'—';const s=n<0?'△ ':'';const a=Math.abs(n);if(a>=100000000)return s+(Math.round(a/10000000)/10).toFixed(1)+'억';if(a>=10000000)return s+Math.round(a/10000000)+'천만';if(a>=1000000)return s+(Math.round(a/100000)/10).toFixed(1)+'백만';return s+fmt(a);}
+function pct(n,d=1){if(!isFinite(n))return'—';return (Math.round(n*Math.pow(10,d))/Math.pow(10,d)).toFixed(d).replace(/\.0$/,'')+'%';}
+function clsByLow(v,go,hold){return v<=go?'green':v<=hold?'amber':'red';}
+function clsByHigh(v,go,hold){return v>=go?'green':v>=hold?'amber':'red';}
+function tagByLow(v,go,hold){return v<=go?'pg':v<=hold?'pa':'pr';}
+function rc(v){return v>=0?'tpos':'tneg';}
+function signed(v){return (v>=0?'+':'△ ')+fmt(Math.abs(v));}
+function basisPrice(price){return vatMode==='exclude'?price/1.1:price;}
+function setVatMode(mode){vatMode=mode;document.getElementById('vatInclBtn').classList.toggle('active',mode==='include');document.getElementById('vatExclBtn').classList.toggle('active',mode==='exclude');calc();}
+function setVatRefund(on){vatRefund=on;document.getElementById('vatRefundOnBtn').classList.toggle('active',on);document.getElementById('vatRefundOffBtn').classList.toggle('active',!on);calc();}
+function toggleEditMode(){editMode=!editMode;const t=document.getElementById('modeToggle');t.classList.toggle('editing',editMode);t.querySelector('.mt-text').textContent=editMode?'편집 모드 · 임계치 변경 가능':'보고 모드 · 임계치 잠금';document.getElementById('editBanner').classList.toggle('show',editMode);lockThresholds();calc();}
+function lockThresholds(){['iwAffordCap','iwCostRate','iwGroupCM','iwBep','iwCac'].forEach(id=>{const el=document.getElementById(id);if(!el)return;el.classList.toggle('locked',!editMode);const inp=el.querySelector('input');if(inp)inp.readOnly=!editMode;});}
+function resetAllocByPrice(){const c=num('priceCream',119000),a=num('priceAmpoule',89000);const total=c+a;if(total>0){document.getElementById('creamAlloc').value=(c/total*100).toFixed(1);document.getElementById('ampAlloc').value=(a/total*100).toFixed(1);}}
+function syncAlloc(changed){let c=num('creamAlloc',57.2),a=num('ampAlloc',42.8);if(changed==='cream'){a=100-c;document.getElementById('ampAlloc').value=a.toFixed(1);}else{c=100-a;document.getElementById('creamAlloc').value=c.toFixed(1);}}
+function extraTotal(setQty){
+  let total=0,orderCost=0,leftoverValue=0,items=[];
+  extraItems.forEach(it=>{
+    const on=document.getElementById(`ex_${it.id}_on`).checked;
+    const supply=num(`ex_${it.id}_supply`,0);
+    const moq=num(`ex_${it.id}_moq`,0);
+    const rate=num(`ex_${it.id}_rate`,0)/100;
+    const vatMode=it.vat;  // 'incl' or 'excl'
+    const orderManualEl=document.getElementById(`ex_${it.id}_orderManual`);
+    const orderManualVal=orderManualEl?parseFloat(orderManualEl.value):NaN;
+    const hasManual=!isNaN(orderManualVal)&&orderManualVal>0;
+    // === 단가 자동 환산 (VAT 제외 기준) ===
+    const supplyExcl=vatMode==='incl'?supply/1.1:supply;
+    const unit=moq>0?supplyExcl/moq:0;
+    // === 손익용 평균 단가 ===
+    const val=on?unit*rate:0;
+    // === 자금용 ===
+    const needQty=on?Math.ceil(setQty*rate):0;
+    const autoOrderQty=on?Math.max(needQty,moq):0;
+    const orderQty=on?(hasManual?orderManualVal:autoOrderQty):0;
+    const itemOrderCost=orderQty*unit;
+    const leftQty=Math.max(0,orderQty-needQty);
+    const leftVal=leftQty*unit;
+    total+=val;
+    orderCost+=itemOrderCost;
+    leftoverValue+=leftVal;
+    items.push({...it,on,supply,moq,vat:vatMode,rate,unit,val,needQty,orderQty,autoOrderQty,hasManual,leftQty,leftVal,itemOrderCost});
+  });
+  return{total,orderCost,leftoverValue,items};
+}
+function channelData(){let shareSum=0,weighted=0,rows=[];channels.forEach(ch=>{const share=num(`ch_${ch.id}_share`,0)/100;const fee=num(`ch_${ch.id}_fee`,0)/100;shareSum+=share;weighted+=share*fee;rows.push({...ch,share,fee});});return{shareSum,weighted,rows};}
+function fixedTotal(){return fixedIds.reduce((s,id)=>s+num(id,0),0);}
+function getData(){
+  const prices={normal:num('priceNormal',190000),season:num('priceSeason',168000),group:num('priceGroup',148000)};
+  const costCream=num('costCream',0),costAmpoule=num('costAmpoule',0);
+  const channel=channelData();
+  const cac=num('cac',0),ship=num('shipCost',0),fix=fixedTotal();
+  const moqCream=num('moqCream',0),moqAmpoule=num('moqAmpoule',0),setQty=Math.min(moqCream,moqAmpoule);
+  // === v20.1: 부대비용 계산을 setQty 기반으로 ===
+  const extra=extraTotal(setQty);
+  const totalCost=costCream+costAmpoule+extra.total;  // 손익용 세트 총원가
+  const baseRev=basisPrice(prices.normal);
+  const calcPrice=(price)=>{const rev=basisPrice(price);const channelFee=rev*channel.weighted;const contribution=rev-totalCost-channelFee-ship-cac;return{price,rev,costRate:totalCost/rev,channelFee,contribution,contributionRate:contribution/rev};};
+  const normal=calcPrice(prices.normal),season=calcPrice(prices.season),group=calcPrice(prices.group);
+  // === v20.1: 자금 계산 정밀화 (MOQ 반영) ===
+  const productionCost=(costCream+costAmpoule)*setQty;     // 제품 부분 (화장품)
+  const extraOrderCost=extra.orderCost;                     // 부대비용 실제 발주액 (MOQ 반영)
+  const initialProduction=productionCost+extraOrderCost;    // 초도 생산비 (정밀)
+  const totalInvest=initialProduction+fix;
+  // 자금 3분리 (지급/환급/실 부담)
+  const supplyTotal=initialProduction+fix;
+  const paymentTotal=initialProduction*1.1+fix;
+  const vatRefundAmt=vatRefund?(paymentTotal-supplyTotal):0;
+  const realBurden=paymentTotal-vatRefundAmt;
+  const bepQty=normal.contribution>0?Math.ceil(totalInvest/normal.contribution):Infinity;
+  const bepSales=bepQty*prices.normal;
+  const bepShare=setQty>0?bepQty/setQty:Infinity;
+  const th={
+    affordCap:num('thAffordCap',150000000),
+    costRate:num('thCostRate',18),
+    groupCM:num('thGroupCM',30),
+    bep:num('thBep',50),
+    cac:num('thCac',50000)
+  };
+  return{prices,costCream,costAmpoule,extra,totalCost,channel,cac,ship,fix,moqCream,moqAmpoule,setQty,normal,season,group,productionCost,extraOrderCost,initialProduction,totalInvest,bepQty,bepSales,bepShare,baseRev,supplyTotal,paymentTotal,vatRefundAmt,realBurden,th};
+}
+function gateStatus(d){
+  // === v20: Gate ABC 다중 판정 ===
+  // A: 자금 (단일 체크)
+  const aPass=d.totalInvest<=d.th.affordCap;
+  const aHold=d.totalInvest<=d.th.affordCap*1.2;
+  const gateA=aPass?'pass':aHold?'hold':'fail';
+
+  // B: 손익 (B-1 그리고 B-2, AND 로직)
+  const b1Pass=d.normal.costRate*100<=d.th.costRate;
+  const b1Hold=d.normal.costRate*100<=d.th.costRate+4;
+  const b1=b1Pass?'pass':b1Hold?'hold':'fail';
+  const b2Pass=d.group.contributionRate*100>=d.th.groupCM;
+  const b2Hold=d.group.contributionRate*100>=d.th.groupCM-10;
+  const b2=b2Pass?'pass':b2Hold?'hold':'fail';
+  const gateB=(b1==='pass'&&b2==='pass')?'pass':(b1==='fail'||b2==='fail')?'fail':'hold';
+
+  // C: 회수 (C-1 또는 C-2, OR 로직)
+  const c1Pass=isFinite(d.bepShare)&&d.bepShare*100<=d.th.bep;
+  const c1Hold=isFinite(d.bepShare)&&d.bepShare*100<=d.th.bep+30;
+  const c1=c1Pass?'pass':c1Hold?'hold':'fail';
+  const c2Pass=d.cac<=d.th.cac;
+  const c2Hold=d.cac<=d.th.cac*1.6;
+  const c2=c2Pass?'pass':c2Hold?'hold':'fail';
+  const gateC=(c1==='pass'||c2==='pass')?'pass':(c1==='fail'&&c2==='fail')?'fail':'hold';
+
+  // 종합 판정
+  const passCount=[gateA,gateB,gateC].filter(x=>x==='pass').length;
+  const failCount=[gateA,gateB,gateC].filter(x=>x==='fail').length;
+  let verdict;
+  if(failCount>=2||(failCount===1&&passCount===0))verdict='중단';
+  else if(passCount===3)verdict='발주';
+  else verdict='보류';
+
+  return{verdict,gateA,gateB,gateC,b1,b2,c1,c2,
+    metrics:{
+      affordCap:d.th.affordCap,totalInvest:d.totalInvest,
+      costRate:d.normal.costRate*100,costRateTh:d.th.costRate,
+      groupCM:d.group.contributionRate*100,groupCMTh:d.th.groupCM,
+      bep:d.bepShare*100,bepTh:d.th.bep,
+      cac:d.cac,cacTh:d.th.cac
+    }
+  };
+}
+function riskMessages(d,g){
+  const risks=[],fixes=[];
+  if(g.gateA!=='pass'){
+    risks.push(`총 초기 투입금 ${fmtW(d.totalInvest)}이 본부 한도 ${fmtW(d.th.affordCap)}을 ${g.gateA==='fail'?'크게 ':''}초과합니다.`);
+    fixes.push(`MOQ 분할 생산(${fmt(d.setQty)}세트 → ${fmt(Math.floor(d.setQty/2))}세트)으로 초도 생산비 약 ${fmtW(d.initialProduction/2)} 절감 가능합니다.`);
+  }
+  if(g.b1!=='pass'){
+    const need=d.normal.rev*d.th.costRate/100;
+    risks.push(`정상가 원가율 ${pct(d.normal.costRate*100)}이 임계 ${d.th.costRate}%를 초과합니다.`);
+    fixes.push(`정상가 ${d.th.costRate}% 달성까지 세트 총원가를 약 ${fmt(Math.max(0,d.totalCost-need))}원 절감해야 합니다.`);
+  }
+  if(g.b2!=='pass'){
+    const target=d.group.rev*d.th.groupCM/100;
+    risks.push(`공구가 공헌이익률 ${pct(d.group.contributionRate*100)}이 임계 ${d.th.groupCM}%에 미달합니다.`);
+    fixes.push(`공구가 ${d.th.groupCM}% 달성을 위해 CAC·수수료·원가 합산 약 ${fmt(Math.max(0,target-d.group.contribution))}원 개선이 필요합니다.`);
+  }
+  if(g.gateC!=='pass'){
+    if(g.c1!=='pass')risks.push(`BEP 비중 ${isFinite(d.bepShare)?pct(d.bepShare*100):'측정 불가'}이 임계 ${d.th.bep}%를 초과합니다.`);
+    if(g.c2!=='pass')risks.push(`CAC ${fmt(d.cac)}원이 임계 ${fmt(d.th.cac)}원을 초과합니다.`);
+    fixes.push('초도 MOQ 축소 또는 공헌이익 개선 또는 CAC 절감 중 하나로 회수 게이트 통과 가능.');
+  }
+  if(!risks.length)risks.push('3개 게이트 모두 통과. 단, 비티진 최종 견적 회신과 실제 사전예약 결과 검증 후 발주 확정 권장.');
+  return{risks,fixes};
+}
+function calc(){const d=getData();const g=gateStatus(d);renderDashboard(d,g);renderInputs(d);renderPrice(d);renderSet(d);renderGuide(d);renderGate(d,g);}
+function renderDashboard(d,g){
+  const card=document.getElementById('verdictCard');const text=document.getElementById('verdictText');
+  const color=g.verdict==='발주'?'var(--accent)':g.verdict==='보류'?'var(--amber)':'var(--red)';
+  card.style.borderLeftColor=color;text.style.color=color;text.textContent=g.verdict;
+  const sub=g.verdict==='발주'?'3개 게이트 모두 통과. 비티진 최종 견적·사전예약 검증 후 발주 확정 권장.':g.verdict==='보류'?'1~2개 게이트 미통과. 원가/CAC/MOQ 중 일부 개선 후 재검토 필요.':'2개 이상 게이트 실패. 현재 조건에서는 대량 발주 위험. 재설계 필요.';
+  document.getElementById('verdictSub').textContent=sub;
+  document.getElementById('dashTotalCost').textContent=fmt(d.totalCost)+'원';document.getElementById('dashTotalCostSub').textContent=`기타 ${fmt(d.extra.total)}원 포함`;
+  document.getElementById('dashNormalRate').textContent=pct(d.normal.costRate*100);document.getElementById('dashSeasonRate').textContent=pct(d.season.costRate*100);
+  document.getElementById('dashContribution').textContent=signed(d.normal.contribution)+'원';document.getElementById('dashContributionSub').textContent=`공헌이익률 ${pct(d.normal.contributionRate*100)}`;
+  document.getElementById('dashBepQty').textContent=isFinite(d.bepQty)?fmt(d.bepQty)+'세트':'수익 없음';document.getElementById('dashBepSub').textContent=isFinite(d.bepShare)?`초도 ${pct(d.bepShare*100)} 판매 필요`:'공헌이익 개선 필요';
+  // === v20: 자금 카드 3줄 (대표값은 실 부담) ===
+  document.getElementById('dashInvest').textContent=fmtW(d.realBurden);
+  document.getElementById('dashPay').textContent=fmtW(d.paymentTotal);
+  document.getElementById('dashVat').textContent=vatRefund?'-'+fmtW(d.vatRefundAmt):'없음';
+  document.getElementById('dashReal').textContent=fmtW(d.realBurden);
+  // KPI 카드 색상 (임계치 기반)
+  document.getElementById('dashCostCard').className='kpi '+clsByLow(d.normal.costRate*100,d.th.costRate,d.th.costRate+4);
+  document.getElementById('dashNormalCard').className='kpi '+clsByLow(d.normal.costRate*100,d.th.costRate,d.th.costRate+4);
+  document.getElementById('dashSeasonCard').className='kpi '+clsByLow(d.season.costRate*100,20,24);
+  document.getElementById('dashContributionCard').className='kpi '+clsByHigh(d.normal.contributionRate*100,35,20);
+  document.getElementById('dashBepCard').className='kpi '+clsByLow(d.bepShare*100,d.th.bep,d.th.bep+30);
+  document.getElementById('dashInvestCard').className='kpi cash3 '+(g.gateA==='pass'?'green':g.gateA==='hold'?'amber':'red');
+}
+function renderInputs(d){
+  document.getElementById('extraSubtotal').textContent=fmt(d.extra.total)+'원';document.getElementById('extraOrderTotal').textContent=fmtW(d.extraOrderCost);document.getElementById('fixedTotal').textContent=fmt(d.fix)+'원';document.getElementById('weightedFee').textContent=pct(d.channel.weighted*100);
+  const warn=document.getElementById('channelWarn');const sharePct=d.channel.shareSum*100;if(Math.abs(sharePct-100)>0.1){warn.style.color='var(--red)';warn.textContent=`판매 비중 합계가 ${pct(sharePct)}입니다. 100%로 맞추는 것을 권장합니다.`;}else{warn.style.color='var(--text3)';warn.textContent='판매 비중 합계 100% 기준으로 가중 평균 수수료가 계산됩니다.';}
+  // === v20.2: 부대비용 상세 정보 갱신 (공급가액·MOQ 기반 단가 자동) ===
+  const elText=(id,txt)=>{const el=document.getElementById(id);if(el)el.textContent=txt;};
+  const elClass=(id,cls)=>{const el=document.getElementById(id);if(el)el.className=cls;};
+  d.extra.items.forEach(it=>{
+    if(!it.on){
+      elText(`ex_${it.id}_unitDerived`,'— (꺼짐)');
+      elText(`ex_${it.id}_need`,'—');elText(`ex_${it.id}_orderShow`,'—');
+      elText(`ex_${it.id}_left`,'—');elText(`ex_${it.id}_leftval`,'—');
+      elText(`ex_${it.id}_pickup`,'—');elText(`ex_${it.id}_costrate`,'—');
+      elClass(`ex_${it.id}_leftcell`,'cd-cell derived');
+      elClass(`ex_${it.id}_leftvalcell`,'cd-cell derived');
+      return;
+    }
+    // 환산 단가
+    elText(`ex_${it.id}_unitDerived`,it.unit>0?fmt(it.unit)+'원 / 개':'공급가액·MOQ 입력 필요');
+    // 필요수량
+    elText(`ex_${it.id}_need`,fmt(it.needQty)+'개');
+    // 실제 발주수량 (자동/수동 표시)
+    const orderLabel=it.hasManual?fmt(it.orderQty)+'개 (수동)':fmt(it.orderQty)+'개'+(it.orderQty>it.needQty?' (MOQ)':' (필요분)');
+    elText(`ex_${it.id}_orderShow`,orderLabel);
+    // 잔여 + 색상
+    elText(`ex_${it.id}_left`,fmt(it.leftQty)+'개');
+    elText(`ex_${it.id}_leftval`,fmt(it.leftVal)+'원');
+    const leftPct=it.orderQty>0?it.leftQty/it.orderQty*100:0;
+    elClass(`ex_${it.id}_leftcell`,'cd-cell derived '+(leftPct>=30?'alert':leftPct>=10?'warn':'ok'));
+    elClass(`ex_${it.id}_leftvalcell`,'cd-cell derived '+(leftPct>=30?'alert':leftPct>=10?'warn':''));
+    // 세트당 손익 부담 = 단가 × 적용률
+    elText(`ex_${it.id}_pickup`,fmt(it.val)+'원');
+    // 정상가 대비 원가율
+    const cr=d.normal.rev>0?(it.val/d.normal.rev*100):0;
+    elText(`ex_${it.id}_costrate`,pct(cr,2));
+  });
+}
+function priceCard(title,obj,main=false){const cls=obj.contributionRate>=.3?'pg':obj.contributionRate>=.15?'pa':'pr';return`<div class="price-card ${main?'main':''}"><div class="price-tag">${title}</div><div class="price-num">${fmt(obj.price)}원</div><div class="price-sub">손익 기준 매출 ${fmt(obj.rev)}원</div><span class="badge ${cls}">공헌이익률 ${pct(obj.contributionRate*100)}</span></div>`;}
+function renderPrice(d){
+  document.getElementById('priceCards').innerHTML=priceCard('정상가',d.normal,true)+priceCard('시즌가',d.season,false)+priceCard('공구가/라이브가',d.group,false);
+  function row(label,get,cls=''){return`<tr class="${cls}"><td class="tl">${label}</td><td class="tr">${get(d.normal)}</td><td class="tr">${get(d.season)}</td><td class="tr">${get(d.group)}</td></tr>`;}
+  document.getElementById('priceTable').innerHTML=
+    row('판매가',x=>fmt(x.price)+'원')+
+    row(vatMode==='exclude'?'VAT 제외 매출':'VAT 포함 기준 매출',x=>fmt(x.rev)+'원')+
+    row('세트 총원가',x=>'<span class="tneg">△ '+fmt(d.totalCost)+'원</span>')+
+    row('원가율',x=>`<span class="tp ${tagByLow(x.costRate*100,x===d.season?20:18,x===d.season?24:22)}">${pct(x.costRate*100)}</span>`)+
+    row('채널 수수료',x=>'<span class="tneg">△ '+fmt(x.channelFee)+'원</span>')+
+    row('배송/물류비',x=>'<span class="tneg">△ '+fmt(d.ship)+'원</span>')+
+    row('CAC',x=>'<span class="tneg">△ '+fmt(d.cac)+'원</span>')+
+    row('세트당 공헌이익',x=>`<span class="${rc(x.contribution)}">${signed(x.contribution)}원</span>`,'rss')+
+    row('공헌이익률',x=>`<span class="tp ${x.contributionRate>=.3?'pg':x.contributionRate>=.15?'pa':'pr'}">${pct(x.contributionRate*100)}</span>`);
+  const n=document.getElementById('priceNotice');
+  n.className='note '+(d.group.contributionRate>=.3?'ok':d.group.contributionRate>=.15?'warn':'bad');
+  n.textContent=`동일 원가 기준에서 공구가 ${fmt(d.prices.group)}원은 공헌이익률 ${pct(d.group.contributionRate*100)}입니다. 인플루언서/라이브 채널은 할인율과 수수료가 동시에 발생하므로 공헌이익률 30% 이상을 우선 기준으로 보는 것이 안전합니다.`;
+}
+function renderSet(d){
+  document.getElementById('setCreamKpi').textContent=fmt(d.costCream)+'원';document.getElementById('setAmpKpi').textContent=fmt(d.costAmpoule)+'원';document.getElementById('setExtraKpi').textContent=fmt(d.extra.total)+'원';document.getElementById('setTotalKpi').textContent=fmt(d.totalCost)+'원';document.getElementById('setTotalSub').textContent=`정상가 기준 ${pct(d.normal.costRate*100)}`;document.getElementById('setTotalCard').className='kpi '+clsByLow(d.normal.costRate*100,18,22);
+  const costRows=[['크림 통합 원가',d.costCream],['앰플 통합 원가',d.costAmpoule],['기타 부대비용 소계',d.extra.total]];
+  document.getElementById('setCostBreakdown').innerHTML=costRows.map(r=>`<tr><td class="tl">${r[0]}</td><td class="tr tneg">△ ${fmt(r[1])}원</td><td class="tr"><span class="tp ${tagByLow(r[1]/d.normal.rev*100,10,15)}">${pct(r[1]/d.normal.rev*100)}</span></td></tr>`).join('')+`<tr class="rss"><td>세트 총원가</td><td class="tr tneg">△ ${fmt(d.totalCost)}원</td><td class="tr"><span class="tp ${tagByLow(d.normal.costRate*100,18,22)}">${pct(d.normal.costRate*100)}</span></td></tr>`;
+  function rr(label,get,css=''){return`<tr class="${css}"><td class="tl">${label}</td><td class="tr">${get(d.normal)}</td><td class="tr">${get(d.season)}</td><td class="tr">${get(d.group)}</td></tr>`;}
+  document.getElementById('contributionTable').innerHTML=
+    rr('판매가',x=>fmt(x.price)+'원')+
+    rr('VAT 제외 매출',x=>fmt(x.rev)+'원')+
+    rr('세트 총원가',x=>`<span class="tneg">△ ${fmt(d.totalCost)}원</span>`)+
+    rr('채널 수수료',x=>`<span class="tneg">△ ${fmt(x.channelFee)}원</span>`)+
+    rr('배송/물류비',x=>`<span class="tneg">△ ${fmt(d.ship)}원</span>`)+
+    rr('CAC',x=>`<span class="tneg">△ ${fmt(d.cac)}원</span>`)+
+    rr('세트당 공헌이익',x=>`<span class="${rc(x.contribution)}">${signed(x.contribution)}원</span>`,'rss')+
+    rr('공헌이익률',x=>`<span class="tp ${x.contributionRate>=.3?'pg':x.contributionRate>=.15?'pa':'pr'}">${pct(x.contributionRate*100)}</span>`);
+  const wf=[['손익 기준 매출',d.normal.rev,100,'#2A5C45'],['크림 원가',-d.costCream,d.costCream/d.normal.rev*100,'#1A5276'],['앰플 원가',-d.costAmpoule,d.costAmpoule/d.normal.rev*100,'#2980B9'],['기타 부대비용',-d.extra.total,d.extra.total/d.normal.rev*100,'#8B4513'],['채널 수수료',-d.normal.channelFee,d.channel.weighted*100,'#C47D1A'],['배송/물류비',-d.ship,d.ship/d.normal.rev*100,'#6B6560'],['CAC',-d.cac,d.cac/d.normal.rev*100,'#C0392B'],['공헌이익',d.normal.contribution,Math.abs(d.normal.contributionRate*100),d.normal.contribution>=0?'#2A5C45':'#C0392B']];
+  document.getElementById('waterfall').innerHTML=wf.map(w=>`<div class="barrow"><div class="barlbl">${w[0]}</div><div class="barbg"><div class="barfill" style="width:${Math.min(Math.max(w[2],2),100)}%;background:${w[3]}22;border-right-color:${w[3]};"><span class="bartext" style="color:${w[3]};">${pct(w[2])}</span></div></div><div class="barval" style="color:${w[1]>=0?'var(--accent)':'var(--red)'};">${w[1]>=0?'+':'△ '}${fmt(Math.abs(w[1]))}</div></div>`).join('');
+  const n=document.getElementById('setNotice');n.className='note '+(d.normal.contributionRate>=.35?'ok':d.normal.contributionRate>=.2?'warn':'bad');n.textContent=`정상가 기준 세트당 공헌이익은 ${signed(d.normal.contribution)}원, 공헌이익률은 ${pct(d.normal.contributionRate*100)}입니다. 이 값이 BEP와 초도 발주 판단의 핵심 기준입니다.`;
+}
+function renderGuide(d){
+  const creamAlloc=num('creamAlloc',57.2)/100,ampAlloc=num('ampAlloc',42.8)/100;
+  const targets=[{r:.15,l:'15% 공격 목표',c:'#2A5C45'},{r:.18,l:'18% 현실 목표',c:'#C47D1A'},{r:.22,l:'22% 위험 기준',c:'#C0392B'}];
+  document.getElementById('targetCards').innerHTML=targets.map(t=>{const targetTotal=d.normal.rev*t.r;const productAllow=Math.max(0,targetTotal-d.extra.total);const cream=productAllow*creamAlloc,amp=productAllow*ampAlloc;const cOK=d.costCream<=cream,aOK=d.costAmpoule<=amp;return`<div class="target-card"><div class="target-head" style="background:${t.c};">${t.l}</div><div class="target-body"><div class="target-line"><span>목표 세트 총원가</span><strong>${fmt(targetTotal)}원</strong></div><div class="target-line"><span>부대비용 차감 후</span><strong>${fmt(productAllow)}원</strong></div><div class="target-line"><span>크림 허용 단가</span><strong class="${cOK?'tpos':'tneg'}">${fmt(cream)}원</strong></div><div class="target-line"><span>앰플 허용 단가</span><strong class="${aOK?'tpos':'tneg'}">${fmt(amp)}원</strong></div><div class="target-line"><span>현재 판정</span><strong class="${cOK&&aOK?'tpos':'tneg'}">${cOK&&aOK?'목표 이내':'목표 초과'}</strong></div></div></div>`;}).join('');
+  const maxRef=40000;const refs=[['고혼진 추정 원가 레퍼런스',30000,'#C47D1A'],['비티진 권고 목표',20000,'#2A5C45'],['현재 크림 통합 원가',d.costCream,'#1A5276'],['현재 앰플 통합 원가',d.costAmpoule,'#2980B9']];
+  document.getElementById('refBars').innerHTML=refs.map(r=>`<div class="barrow"><div class="barlbl">${r[0]}</div><div class="barbg"><div class="barfill" style="width:${Math.min(r[1]/maxRef*100,100)}%;background:${r[2]}22;border-right-color:${r[2]};"><span class="bartext" style="color:${r[2]};">${fmt(r[1])}원</span></div></div><div class="barval">${fmt(r[1])}원</div></div>`).join('');
+  const target18=d.normal.rev*.18;const productAllow=Math.max(0,target18-d.extra.total);const cream18=productAllow*creamAlloc,amp18=productAllow*ampAlloc;const overC=d.costCream-cream18,overA=d.costAmpoule-amp18;
+  const n=document.getElementById('guideNotice');if(overC<=0&&overA<=0){n.className='note ok';n.textContent=`18% 현실 목표 기준으로 크림·앰플 모두 허용 단가 이내입니다. 크림 여유 ${fmt(-overC)}원, 앰플 여유 ${fmt(-overA)}원.`;}else{n.className='note warn';n.textContent=`18% 현실 목표 기준 초과 항목이 있습니다. ${overC>0?'크림 '+fmt(overC)+'원 초과. ':''}${overA>0?'앰플 '+fmt(overA)+'원 초과. ':''}부대비용 절감 또는 통합 단가 재협상이 필요합니다.`;}
+}
+function renderGate(d,g){
+  // === v20: MOQ·자금 4-카드 ===
+  document.getElementById('moqCards').innerHTML=`
+    <div class="gate-card"><div class="gate-lbl">세트 구성 가능 수량</div><div class="gate-val">${fmt(d.setQty)}세트</div><div class="gate-st pass"><span class="dot"></span>MIN(${fmt(d.moqCream)}, ${fmt(d.moqAmpoule)})</div></div>
+    <div class="gate-card"><div class="gate-lbl">초도 생산비</div><div class="gate-val">${fmtW(d.initialProduction)}</div><div class="gate-st pass"><span class="dot"></span>세트 총원가 × MOQ</div></div>
+    <div class="gate-card"><div class="gate-lbl">실 부담 (VAT 환급 후)</div><div class="gate-val">${fmtW(d.realBurden)}</div><div class="gate-st ${g.gateA==='pass'?'pass':g.gateA==='hold'?'hold':'kill'}"><span class="dot"></span>지급 ${fmtW(d.paymentTotal)} − 환급 ${fmtW(d.vatRefundAmt)}</div></div>
+    <div class="gate-card"><div class="gate-lbl">BEP 달성 매출</div><div class="gate-val">${isFinite(d.bepSales)?fmtW(d.bepSales):'수익 없음'}</div><div class="gate-st ${g.c1==='pass'?'pass':g.c1==='hold'?'hold':'kill'}"><span class="dot"></span>${isFinite(d.bepShare)?'초도 '+pct(d.bepShare*100)+' 판매 필요':'공헌이익 개선 필요'}</div></div>`;
+
+  // === v20: Gate ABC 사유 블록 ===
+  const labelMap={pass:'통과',hold:'주의',fail:'미통과'};
+  const block=(tag,title,logic,status,metrics,reco)=>`
+    <div class="gate-block">
+      <div class="gate-block-head">
+        <span class="gate-tag">${tag}</span>
+        <span class="gate-block-title">${title}</span>
+        <span class="gate-logic">${logic}</span>
+        <span class="gate-block-status ${status==='pass'?'pass':status==='hold'?'hold':'kill'}">${labelMap[status]||status.toUpperCase()}</span>
+      </div>
+      <div class="gate-block-body">
+        ${metrics}
+        ${reco?`<div class="gate-reco">${reco}</div>`:''}
+      </div>
+    </div>`;
+
+  const m=g.metrics;
+  const subMetric=(name,val,th,status)=>`<div class="gate-metric"><span class="gm-name">${name}</span><span class="gm-val">${val}</span><span class="gm-th">기준 ${th} · ${labelMap[status]}</span></div>`;
+  const rm=riskMessages(d,g);
+
+  let gateA=block('A','자금 (Affordability)','단일 체크',g.gateA,
+    subMetric('총 초기 투입금',fmtW(d.totalInvest),'≤ '+fmtW(d.th.affordCap),g.gateA),
+    g.gateA!=='pass'?`MOQ 분할 생산 또는 본부 한도 재합의 필요. 현재 ${fmtW(d.totalInvest-d.th.affordCap)} 초과.`:'');
+  let gateB=block('B','단위 손익 (Unit Economics)','B-1 그리고 B-2',g.gateB,
+    subMetric('B-1 정상가 원가율',pct(d.normal.costRate*100),'≤ '+d.th.costRate+'%',g.b1)+
+    subMetric('B-2 공구가 공헌이익률',pct(d.group.contributionRate*100),'≥ '+d.th.groupCM+'%',g.b2),
+    g.gateB!=='pass'?'원가 절감 또는 가격 인상으로 정상가 원가율 개선 + 공구가 채널 수수료·CAC 절감으로 공헌이익률 향상 필요.':'');
+  let gateC=block('C','회수 (Recovery)','C-1 또는 C-2',g.gateC,
+    subMetric('C-1 BEP 비중',isFinite(d.bepShare)?pct(d.bepShare*100):'측정 불가','≤ '+d.th.bep+'%',g.c1)+
+    subMetric('C-2 CAC',fmt(d.cac)+'원','≤ '+fmt(d.th.cac)+'원',g.c2),
+    g.gateC!=='pass'?'두 조건 중 하나만 통과해도 됩니다. MOQ 축소(C-1) 또는 광고 효율 개선(C-2) 중 더 빠른 길 선택.':'');
+
+  document.getElementById('gateCards').innerHTML=gateA+gateB+gateC;
+
+  const n=document.getElementById('gateNotice');
+  n.className='note '+(g.verdict==='발주'?'ok':g.verdict==='보류'?'warn':'bad');
+  n.innerHTML=`<b>현재 판정: ${g.verdict}</b><br><br><ul class="risk-list">${rm.risks.map(x=>`<li>${x}</li>`).join('')}</ul>${rm.fixes.length?`<br><b>개선 가이드</b><ul class="risk-list">${rm.fixes.slice(0,4).map(x=>`<li>${x}</li>`).join('')}</ul>`:''}`;
+}
+function setTab(t){['price','set','guide','gate'].forEach(k=>{document.getElementById('view-'+k).style.display=k===t?'block':'none';document.getElementById('tab-'+k).className='tab'+(k===t?' active':'');});}
+initRows();resetAllocByPrice();lockThresholds();calc();
+</script>
+</body>
+</html>
