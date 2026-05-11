@@ -21,7 +21,7 @@
   .header-left p{font-size:12px;color:rgba(255,255,255,.56);letter-spacing:.5px;}
   .header-badge{font-size:11px;background:var(--gold);color:var(--text);padding:5px 13px;border-radius:2px;font-weight:800;letter-spacing:.6px;}
   .container{max-width:1280px;margin:0 auto;padding:24px;}
-  .dash{position:sticky;top:0;z-index:20;background:rgba(247,245,240,.96);backdrop-filter:blur(8px);padding:14px 0 18px;margin-bottom:18px;border-bottom:1px solid var(--border);}
+  .dash{position:sticky;top:0;z-index:20;background:rgba(247,245,240,.96);backdrop-filter:blur(8px);padding:14px 0 18px;margin-bottom:18px;border-bottom:1px solid var(--border);box-shadow:0 6px 14px -10px rgba(0,0,0,.12);}
   .dash-grid{display:grid;grid-template-columns:1.25fr repeat(6,1fr);gap:10px;align-items:stretch;}
   .verdict-card{background:var(--surface);border:1px solid var(--border);border-left:6px solid var(--accent);border-radius:5px;padding:14px 16px;min-height:96px;display:flex;flex-direction:column;justify-content:center;}
   .verdict-label{font-size:10px;font-weight:800;color:var(--text3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px;}
@@ -147,7 +147,10 @@
   .mode-toggle.editing{background:var(--red);border-color:var(--red);}
   .mode-toggle .mt-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);}
   .mode-toggle.editing .mt-dot{background:#FFD9D5;}
-  .header-right{display:flex;align-items:center;gap:10px;flex-direction:column;align-items:flex-end;}
+  .reset-btn{padding:5px 10px;border-radius:3px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);font-size:11px;letter-spacing:.3px;font-weight:600;color:rgba(255,255,255,.85);cursor:pointer;font-family:inherit;}
+  .reset-btn:hover{background:rgba(255,255,255,.16);color:white;}
+  .save-status{font-size:10px;color:rgba(255,255,255,.5);letter-spacing:.2px;font-weight:500;}
+  .header-right{display:flex;align-items:center;gap:8px;flex-direction:column;align-items:flex-end;}
   .edit-banner{display:none;background:var(--red-light);border:1px solid var(--red);color:var(--red);padding:9px 14px;border-radius:4px;font-size:11px;font-weight:700;margin-bottom:14px;letter-spacing:.2px;}
   .edit-banner.show{display:block;}
   /* 잠긴 인풋 (보고 모드) */
@@ -189,10 +192,14 @@
   </div>
   <div class="header-right">
     <div class="header-badge">대외비</div>
-    <div class="mode-toggle" id="modeToggle" onclick="toggleEditMode()">
-      <span class="mt-dot"></span>
-      <span class="mt-text">보고 모드 · 임계치 잠금</span>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button type="button" class="reset-btn" onclick="clearState()" title="모든 입력값을 초기 시장가 평균값으로 되돌립니다">↺ 값 초기화</button>
+      <div class="mode-toggle" id="modeToggle" onclick="toggleEditMode()">
+        <span class="mt-dot"></span>
+        <span class="mt-text">보고 모드 · 임계치 잠금</span>
+      </div>
     </div>
+    <div class="save-status" id="saveStatus">자동 저장</div>
   </div>
 </div>
 
@@ -411,6 +418,7 @@
 let vatMode='exclude';
 let vatRefund=true;     // 법인=환급 O, 간이=환급 X
 let editMode=false;     // 보고 모드 = 임계치 잠금
+const STORAGE_KEY='beauty_pnl_v20_state';
 const extraItems=[
   {id:'mask',name:'마스크팩 5매',unit:4000,supply:40000000,moq:10000,vat:'excl',rate:100,on:true},
   {id:'seal',name:'스티커/봉인씰',unit:100,supply:500000,moq:5000,vat:'excl',rate:100,on:true},
@@ -498,10 +506,73 @@ function setItemVat(id,mode){
   document.getElementById(`ex_${id}_vatexcl`).classList.toggle('active',mode==='excl');
   calc();
 }
+
+// === v20.4: localStorage 저장 / 복원 / 초기화 ===
+let saveTimer=null;
+function saveStateDebounced(){clearTimeout(saveTimer);saveTimer=setTimeout(saveState,400);}
+function saveState(){
+  try{
+    const state={inputs:{},checkboxes:{},vatMode,vatRefund,editMode,itemVats:{}};
+    document.querySelectorAll('input[type="number"]').forEach(inp=>{if(inp.id)state.inputs[inp.id]=inp.value;});
+    document.querySelectorAll('input[type="checkbox"]').forEach(inp=>{if(inp.id)state.checkboxes[inp.id]=inp.checked;});
+    extraItems.forEach(it=>{state.itemVats[it.id]=it.vat;});
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+    const s=document.getElementById('saveStatus');if(s){s.textContent='✓ 저장됨 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}
+  }catch(e){
+    const s=document.getElementById('saveStatus');if(s)s.textContent='저장 실패';
+  }
+}
+function loadState(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return false;
+    const state=JSON.parse(raw);
+    if(state.inputs)Object.entries(state.inputs).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v;});
+    if(state.checkboxes)Object.entries(state.checkboxes).forEach(([id,c])=>{const el=document.getElementById(id);if(el)el.checked=c;});
+    if(state.itemVats)extraItems.forEach(it=>{
+      if(state.itemVats[it.id]){it.vat=state.itemVats[it.id];
+        const i=document.getElementById(`ex_${it.id}_vatincl`),e=document.getElementById(`ex_${it.id}_vatexcl`);
+        if(i)i.classList.toggle('active',it.vat==='incl');
+        if(e)e.classList.toggle('active',it.vat==='excl');
+      }
+    });
+    if(state.vatMode){vatMode=state.vatMode;
+      const i=document.getElementById('vatInclBtn'),e=document.getElementById('vatExclBtn');
+      if(i)i.classList.toggle('active',vatMode==='include');if(e)e.classList.toggle('active',vatMode==='exclude');
+    }
+    if(typeof state.vatRefund==='boolean'){vatRefund=state.vatRefund;
+      const on=document.getElementById('vatRefundOnBtn'),off=document.getElementById('vatRefundOffBtn');
+      if(on)on.classList.toggle('active',vatRefund);if(off)off.classList.toggle('active',!vatRefund);
+    }
+    if(typeof state.editMode==='boolean'){editMode=state.editMode;
+      const t=document.getElementById('modeToggle');
+      if(t){t.classList.toggle('editing',editMode);
+        const txt=t.querySelector('.mt-text');if(txt)txt.textContent=editMode?'편집 모드 · 임계치 변경 가능':'보고 모드 · 임계치 잠금';
+      }
+      const banner=document.getElementById('editBanner');if(banner)banner.classList.toggle('show',editMode);
+    }
+    return true;
+  }catch(e){return false;}
+}
+function clearState(){
+  if(!confirm('모든 입력값을 초기 시장가 평균값으로 되돌립니다.\n정말 진행하시겠습니까?'))return;
+  try{localStorage.removeItem(STORAGE_KEY);}catch(e){}
+  location.reload();
+}
+
+// === v20.4: Sticky offset 동적 계산 ===
+function updateStickyOffset(){
+  const dash=document.querySelector('.dash');
+  const col=document.querySelector('.result-col');
+  if(dash&&col){
+    const h=dash.offsetHeight;
+    col.style.top=(h+12)+'px';
+    col.style.maxHeight=`calc(100vh - ${h+24}px)`;
+  }
+}
 function num(id,def=0){const el=document.getElementById(id);const v=el?parseFloat(el.value):NaN;return isNaN(v)?def:v;}
 function fmt(n){if(!isFinite(n))return'—';return Math.round(n).toLocaleString('ko-KR');}
 function won(n){return (n<0?'△ ':'')+fmt(Math.abs(n))+'원';}
-function fmtW(n){if(!isFinite(n))return'—';const s=n<0?'△ ':'';const a=Math.abs(n);if(a>=100000000)return s+(Math.round(a/10000000)/10).toFixed(1)+'억';if(a>=10000000)return s+Math.round(a/10000000)+'천만';if(a>=1000000)return s+(Math.round(a/100000)/10).toFixed(1)+'백만';return s+fmt(a);}
+function fmtW(n){if(!isFinite(n))return'—';const s=n<0?'△ ':'';const a=Math.abs(n);if(a>=100000000){const eok=a/100000000;return s+(eok>=10?eok.toFixed(1):eok.toFixed(2).replace(/\.?0+$/,''))+'억';}if(a>=10000)return s+fmt(Math.round(a/10000))+'만';return s+fmt(a);}
 function pct(n,d=1){if(!isFinite(n))return'—';return (Math.round(n*Math.pow(10,d))/Math.pow(10,d)).toFixed(d).replace(/\.0$/,'')+'%';}
 function clsByLow(v,go,hold){return v<=go?'green':v<=hold?'amber':'red';}
 function clsByHigh(v,go,hold){return v>=go?'green':v>=hold?'amber':'red';}
@@ -648,7 +719,7 @@ function riskMessages(d,g){
   if(!risks.length)risks.push('3개 게이트 모두 통과. 단, 비티진 최종 견적 회신과 실제 사전예약 결과 검증 후 발주 확정 권장.');
   return{risks,fixes};
 }
-function calc(){const d=getData();const g=gateStatus(d);renderDashboard(d,g);renderInputs(d);renderPrice(d);renderSet(d);renderGuide(d);renderGate(d,g);}
+function calc(){const d=getData();const g=gateStatus(d);renderDashboard(d,g);renderInputs(d);renderPrice(d);renderSet(d);renderGuide(d);renderGate(d,g);saveStateDebounced();updateStickyOffset();}
 function renderDashboard(d,g){
   const card=document.getElementById('verdictCard');const text=document.getElementById('verdictText');
   const color=g.verdict==='발주'?'var(--accent)':g.verdict==='보류'?'var(--amber)':'var(--red)';
@@ -754,12 +825,14 @@ function renderGuide(d){
   const n=document.getElementById('guideNotice');if(overC<=0&&overA<=0){n.className='note ok';n.textContent=`18% 현실 목표 기준으로 크림·앰플 모두 허용 단가 이내입니다. 크림 여유 ${fmt(-overC)}원, 앰플 여유 ${fmt(-overA)}원.`;}else{n.className='note warn';n.textContent=`18% 현실 목표 기준 초과 항목이 있습니다. ${overC>0?'크림 '+fmt(overC)+'원 초과. ':''}${overA>0?'앰플 '+fmt(overA)+'원 초과. ':''}부대비용 절감 또는 통합 단가 재협상이 필요합니다.`;}
 }
 function renderGate(d,g){
-  // === v20: MOQ·자금 4-카드 ===
+  // === v20: MOQ·자금 5-카드 (자금 흐름 명확화) ===
+  const cosmeticsProductionCost=(d.costCream+d.costAmpoule)*d.setQty;
   document.getElementById('moqCards').innerHTML=`
-    <div class="gate-card"><div class="gate-lbl">세트 구성 가능 수량</div><div class="gate-val">${fmt(d.setQty)}세트</div><div class="gate-st pass"><span class="dot"></span>MIN(${fmt(d.moqCream)}, ${fmt(d.moqAmpoule)})</div></div>
-    <div class="gate-card"><div class="gate-lbl">초도 생산비</div><div class="gate-val">${fmtW(d.initialProduction)}</div><div class="gate-st pass"><span class="dot"></span>세트 총원가 × MOQ</div></div>
+    <div class="gate-card"><div class="gate-lbl">세트 구성 가능 수량</div><div class="gate-val">${fmt(d.setQty)}세트</div><div class="gate-st pass"><span class="dot"></span>MIN(크림 ${fmt(d.moqCream)} / 앰플 ${fmt(d.moqAmpoule)})</div></div>
+    <div class="gate-card"><div class="gate-lbl">초도 생산비</div><div class="gate-val">${fmtW(d.initialProduction)}</div><div class="gate-st pass"><span class="dot"></span>화장품 ${fmtW(cosmeticsProductionCost)} + 부대 ${fmtW(d.extraOrderCost)}</div></div>
+    <div class="gate-card"><div class="gate-lbl">초기 고정비</div><div class="gate-val">${fmtW(d.fix)}</div><div class="gate-st pass"><span class="dot"></span>디자인·테스트·인증 11항목</div></div>
     <div class="gate-card"><div class="gate-lbl">실 부담 (VAT 환급 후)</div><div class="gate-val">${fmtW(d.realBurden)}</div><div class="gate-st ${g.gateA==='pass'?'pass':g.gateA==='hold'?'hold':'kill'}"><span class="dot"></span>지급 ${fmtW(d.paymentTotal)} − 환급 ${fmtW(d.vatRefundAmt)}</div></div>
-    <div class="gate-card"><div class="gate-lbl">BEP 달성 매출</div><div class="gate-val">${isFinite(d.bepSales)?fmtW(d.bepSales):'수익 없음'}</div><div class="gate-st ${g.c1==='pass'?'pass':g.c1==='hold'?'hold':'kill'}"><span class="dot"></span>${isFinite(d.bepShare)?'초도 '+pct(d.bepShare*100)+' 판매 필요':'공헌이익 개선 필요'}</div></div>`;
+    <div class="gate-card" style="grid-column:1/-1;background:#FCFAF5;"><div class="gate-lbl">BEP 달성 매출 (회수 지표)</div><div class="gate-val">${isFinite(d.bepSales)?fmtW(d.bepSales):'수익 없음'}</div><div class="gate-st ${g.c1==='pass'?'pass':g.c1==='hold'?'hold':'kill'}"><span class="dot"></span>${isFinite(d.bepShare)?'정상가 기준 '+fmt(d.bepQty)+'세트 판매 필요 (초도의 '+pct(d.bepShare*100)+')':'공헌이익 개선 필요'}</div></div>`;
 
   // === v20: Gate ABC 사유 블록 ===
   const labelMap={pass:'통과',hold:'주의',fail:'미통과'};
@@ -800,7 +873,9 @@ function renderGate(d,g){
   n.innerHTML=`<b>현재 판정: ${g.verdict}</b><br><br><ul class="risk-list">${rm.risks.map(x=>`<li>${x}</li>`).join('')}</ul>${rm.fixes.length?`<br><b>개선 가이드</b><ul class="risk-list">${rm.fixes.slice(0,4).map(x=>`<li>${x}</li>`).join('')}</ul>`:''}`;
 }
 function setTab(t){['price','set','guide','gate'].forEach(k=>{document.getElementById('view-'+k).style.display=k===t?'block':'none';document.getElementById('tab-'+k).className='tab'+(k===t?' active':'');});}
-initRows();resetAllocByPrice();lockThresholds();calc();
+initRows();resetAllocByPrice();loadState();lockThresholds();calc();
+window.addEventListener('resize',updateStickyOffset);
+setTimeout(updateStickyOffset,100);
 </script>
 </body>
 </html>
